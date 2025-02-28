@@ -229,38 +229,87 @@ def find_all_best_thresh(main_eval, preds, exact_raw, f1_raw, na_probs, qid_to_h
   main_eval['best_f1_thresh'] = f1_thresh
 
 def main():
+
+  # Load the relevant json files 
+  # 1. Original dataset, with questions and GT 
   with open(OPTS.data_file) as f:
     dataset_json = json.load(f)
     dataset = dataset_json['data']
+
+  # 2. Predictions dataset in the format {"question_id": "LLM with RAG answer"}
   with open(OPTS.pred_file) as f:
     preds = json.load(f)
+
+  # 3. To review this part 
   if OPTS.na_prob_file:
     with open(OPTS.na_prob_file) as f:
       na_probs = json.load(f)
   else:
     na_probs = {k: 0.0 for k in preds}
+  
+  # Dictionary indicating whether the questions have answers 
   qid_to_has_ans = make_qid_to_has_ans(dataset)  # maps qid to True/False
+
+  # Split between questions with/without answers 
   has_ans_qids = [k for k, v in qid_to_has_ans.items() if v]
   no_ans_qids = [k for k, v in qid_to_has_ans.items() if not v]
+
+  # Compute exact score and f1 score 
+  # Note: if a question cannot be answered, the answer in the pred.json should be an empty string!
+
+  # Scores computation: all potential answers in the GT are compared against the LLM answer, 
+  # and the maximum score is taken as the final score 
+  
+  # ---> Exact score: pred == gt, after text normalization, ie punctuation removal etc (as integer 0/1)
+  # ---> F1 score: compare token-wise - calculates precision and recall and combines into f1 score 
+  # The result is a dictionary {"question_id": score}
   exact_raw, f1_raw = get_raw_scores(dataset, preds)
+
+  #print("Exact raw", exact_raw)
+  #print("F1 score", f1_raw)
+
   exact_thresh = apply_no_ans_threshold(exact_raw, na_probs, qid_to_has_ans,
                                         OPTS.na_prob_thresh)
+  
   f1_thresh = apply_no_ans_threshold(f1_raw, na_probs, qid_to_has_ans,
                                      OPTS.na_prob_thresh)
+  
+  # --------------------------------------------------------
+  # ADDED CODE
+  # save the results for each question
+  with open("exact_thresh_by_qid.json", 'w') as f:
+      json.dump(exact_thresh, f)
+  with open("f1_thresh_by_qid.json", 'w') as f:
+      json.dump(f1_thresh, f)
+  
+  # --------------------------------------------------------
+
   out_eval = make_eval_dict(exact_thresh, f1_thresh)
+
+ # print("Questions with answers: ", len(has_ans_qids))
+ # print("Questions with no answers: ", len(no_ans_qids))
+
   if has_ans_qids:
     has_ans_eval = make_eval_dict(exact_thresh, f1_thresh, qid_list=has_ans_qids)
     merge_eval(out_eval, has_ans_eval, 'HasAns')
+
+   # print(has_ans_eval)
+
   if no_ans_qids:
     no_ans_eval = make_eval_dict(exact_thresh, f1_thresh, qid_list=no_ans_qids)
     merge_eval(out_eval, no_ans_eval, 'NoAns')
+   
+   # print(no_ans_eval)
+
   if OPTS.na_prob_file:
     find_all_best_thresh(out_eval, preds, exact_raw, f1_raw, na_probs, qid_to_has_ans)
+
   if OPTS.na_prob_file and OPTS.out_image_dir:
     run_precision_recall_analysis(out_eval, exact_raw, f1_raw, na_probs, 
                                   qid_to_has_ans, OPTS.out_image_dir)
     histogram_na_prob(na_probs, has_ans_qids, OPTS.out_image_dir, 'hasAns')
     histogram_na_prob(na_probs, no_ans_qids, OPTS.out_image_dir, 'noAns')
+
   if OPTS.out_file:
     with open(OPTS.out_file, 'w') as f:
       json.dump(out_eval, f)
