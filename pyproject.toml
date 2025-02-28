@@ -1,0 +1,19 @@
+[project]
+name = "squad-rag-experiments-new"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12.2"
+dependencies = [
+    "dotenv>=0.9.9",
+    "ipykernel>=6.29.5",
+    "langchain-community>=0.3.18",
+    "langchain>=0.3.19",
+    "matplotlib>=3.10.1",
+    "numpy>=2.2.3",
+    "pandas>=2.2.3",
+    "seaborn>=0.13.2",
+    "tqdm>=4.67.1",
+    "langchain-openai>=0.3.7",
+    "chromadb>=0.6.3",
+]
