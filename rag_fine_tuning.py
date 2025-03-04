@@ -198,14 +198,14 @@ def fine_tune_rag(df, langchain_docs):
     # TODO: improve num of documents retrieved and the retrieval threshold 
 
     #chunk_sizes = [100, 200, 300, 400, 500, 800, 1200, 1600]
-    chunk_sizes =  [100] #[600, 800]
+    chunk_sizes =  [100, 200, 400, 500, 600] #[600, 800]
 
     models = ["gpt-3.5-turbo"]
 
     embed_options = {
         "text-embedding-3-small": "OpenAI", 
         "text-embedding-3-large": "OpenAI", 
-        #"text-embedding-ada-002": "OpenAI" # poor performance 
+        "text-embedding-ada-002": "OpenAI"  
         #"voyageai/voyage-3-m-exp": "custom" # best retrieval model mar 2025 based on HuggingFace MTEB leaderboard, but proprietary model, paid 
         # "Snowflake/snowflake-arctic-embed-l-v2.0": "HuggingFace_SentenceTransformers"# ranked 6th, 568M params
     }
