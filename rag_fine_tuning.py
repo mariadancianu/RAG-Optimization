@@ -1,6 +1,7 @@
 import os 
 import tqdm 
 import json
+import pandas as pd 
 from typing import Optional, List, Tuple
 from langchain.docstore.document import Document as LangchainDocument
 from langchain.text_splitter import RecursiveCharacterTextSplitter

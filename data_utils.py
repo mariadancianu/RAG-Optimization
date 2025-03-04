@@ -176,3 +176,27 @@ def merge_results():
     df = df.merge(df_pred, how="left", on="id")
 
     return df 
+
+
+def collect_all_results():
+
+    all_res = []
+
+    files = os.listdir("eval_results")
+    files = [f for f in files if f.startswith("eval_pred_500") and f.endswith("json")]
+
+    for f in files:
+        filepath = os.path.join(os.getcwd(), "eval_results", f) 
+       
+        with open(filepath, "rb") as file_to_load:
+            res = json.load(file_to_load)
+        
+        res["experiment"] = f
+
+        df_res = pd.DataFrame.from_dict({k: [v] for k, v in res.items()}, orient="columns")
+      
+        all_res.append(df_res)
+    
+    df_all = pd.concat(all_res, ignore_index=True)
+
+    return df_all
