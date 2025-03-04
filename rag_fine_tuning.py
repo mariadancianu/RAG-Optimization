@@ -228,6 +228,15 @@ def fine_tune_rag(df, langchain_docs):
         
         for model_name in models: 
             for chunk_size in chunk_sizes:
+                print(f"Running {model_name} - {chunk_size} - {embeddings_name}")
+
+                filename = f"pred_500_{chunk_size}_{embeddings_name}_{model_name}.json"
+                filepath = os.path.join("eval_results", filename)
+
+                if os.path.isfile(filepath):
+                    print("Results already exist for these settings: skipping!")
+                    continue 
+
                 save_llm_answers(
                     df,
                     langchain_docs,
@@ -236,5 +245,5 @@ def fine_tune_rag(df, langchain_docs):
                     model_name=model_name, 
                     chunk_size=chunk_size, 
                     num_context_documents=3,
-                    filename=f"pred_500_{chunk_size}_{embeddings_name}_{model_name}.json"
+                    filename=filename
                 ) 
