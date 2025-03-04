@@ -112,6 +112,7 @@ def apply_no_ans_threshold(scores, na_probs, qid_to_has_ans, na_prob_thresh):
 def make_eval_dict(exact_scores, f1_scores, qid_list=None):
   if not qid_list:
     total = len(exact_scores)
+
     return collections.OrderedDict([
         ('exact', 100.0 * sum(exact_scores.values()) / total),
         ('f1', 100.0 * sum(f1_scores.values()) / total),
@@ -119,6 +120,7 @@ def make_eval_dict(exact_scores, f1_scores, qid_list=None):
     ])
   else:
     total = len(qid_list)
+
     return collections.OrderedDict([
         ('exact', 100.0 * sum(exact_scores[k] for k in qid_list) / total),
         ('f1', 100.0 * sum(f1_scores[k] for k in qid_list) / total),
@@ -278,9 +280,9 @@ def main():
   # ADDED CODE
   # save the results for each question
   with open("exact_thresh_by_qid.json", 'w') as f:
-      json.dump(exact_thresh, f)
+      json.dump(exact_thresh, f, indent=4)
   with open("f1_thresh_by_qid.json", 'w') as f:
-      json.dump(f1_thresh, f)
+      json.dump(f1_thresh, f, indent=4)
   
   # --------------------------------------------------------
 
@@ -291,16 +293,13 @@ def main():
 
   if has_ans_qids:
     has_ans_eval = make_eval_dict(exact_thresh, f1_thresh, qid_list=has_ans_qids)
+    
     merge_eval(out_eval, has_ans_eval, 'HasAns')
-
-   # print(has_ans_eval)
-
+    
   if no_ans_qids:
     no_ans_eval = make_eval_dict(exact_thresh, f1_thresh, qid_list=no_ans_qids)
     merge_eval(out_eval, no_ans_eval, 'NoAns')
    
-   # print(no_ans_eval)
-
   if OPTS.na_prob_file:
     find_all_best_thresh(out_eval, preds, exact_raw, f1_raw, na_probs, qid_to_has_ans)
 
@@ -312,7 +311,7 @@ def main():
 
   if OPTS.out_file:
     with open(OPTS.out_file, 'w') as f:
-      json.dump(out_eval, f)
+      json.dump(out_eval, f, indent=4)
   else:
     print(json.dumps(out_eval, indent=2))
 
