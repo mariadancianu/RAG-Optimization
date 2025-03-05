@@ -12,6 +12,7 @@ from langchain_openai import OpenAIEmbeddings
 from sentence_transformers import SentenceTransformer
 import pprint
 import chromadb
+from mistralai import Mistral
 
 load_dotenv()
 
@@ -176,9 +177,15 @@ def save_llm_answers(df,
                      num_context_documents=3,
                      filename="result.json", 
                      results_folder="eval_results",
+                     client="openai",
                      save_context=False):
 
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    if client == "openai": 
+        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    elif client == "mistral": 
+        client = Mistral(api_key=os.environ.get("MISTRAL_API_KEY"))
+    else:
+        print("Invalid client!")
 
     df_to_test = df.copy()
     
@@ -202,7 +209,7 @@ def save_llm_answers(df,
         # Concatenate all relevant documents with numbering
         context = "\n\n".join([f"Source {i+1}: {doc}" for i, doc in enumerate(context[0])])
 
-        print(context)
+        #print(context)
 
         # Create improved structured prompt
         prompt = f"""
@@ -265,7 +272,8 @@ parameters_dict = {
          #"voyageai/voyage-3-m-exp": "custom" # best retrieval model mar 2025 based on HuggingFace MTEB leaderboard, but proprietary model, paid 
         # "Snowflake/snowflake-arctic-embed-l-v2.0": "HuggingFace_SentenceTransformers"# ranked 6th, 568M params, released in december 2024 
         },
-    "models": ["gpt-3.5-turbo"]
+    "models": {"gpt-3.5-turbo": "openai", 
+               "mistral-large-latest": "mistral"}
 }
 
 
@@ -280,7 +288,7 @@ def fine_tune_rag(df,
 
     chunk_sizes = parameters_dict.get("chunk_sizes", [100])
     embed_options = parameters_dict.get("embed_options", {"text-embedding-3-small": "OpenAI"})
-    models = parameters_dict.get("models", ["gpt-3.5-turbo"])
+    models = parameters_dict.get("models", {"gpt-3.5-turbo": "openai"})
    
     for embeddings_name, embeddings_platform in embed_options.items(): 
         cache_dir = './model_cache'
@@ -300,7 +308,7 @@ def fine_tune_rag(df,
             #embeddings = VoyageEmbeddings(voyage_api_key="", model="voyage-3") # proprietary, paid 
         """
         
-        for model_name in models: 
+        for model_name, client in models.items(): 
             for chunk_size in chunk_sizes:
                 print(f"Running {model_name} - {chunk_size} - {embeddings_name}")
 
@@ -321,6 +329,7 @@ def fine_tune_rag(df,
                     num_context_documents=3,
                     filename=filename,
                     results_folder=results_folder,
+                    client=client,
                     save_context=save_context
                 ) 
 
