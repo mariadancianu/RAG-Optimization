@@ -3,5 +3,6 @@
 .vscode/
 .idea/
 .ipynb_checkpoints/
-
-.vector_databases/
+vector_databases/
+*.pyc
+__pycache__/
