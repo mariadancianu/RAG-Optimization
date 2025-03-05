@@ -241,7 +241,7 @@ def main():
   # 2. Predictions dataset in the format {"question_id": "LLM with RAG answer"}
   with open(OPTS.pred_file) as f:
     preds = json.load(f)
-
+    
   # 3. To review this part 
   if OPTS.na_prob_file:
     with open(OPTS.na_prob_file) as f:
@@ -278,11 +278,12 @@ def main():
   
   # --------------------------------------------------------
   # ADDED 
+
   # save the results for each question
-  #with open("eval_results/exact_thresh_by_qid.json", 'w') as f:
-   #   json.dump(exact_thresh, f, indent=4)
-  #with open("eval_results/f1_thresh_by_qid.json", 'w') as f:
-   #   json.dump(f1_thresh, f, indent=4)
+  with open("eval_results/debugging_eval_results/exact_thresh_by_qid.json", 'w') as f:
+      json.dump(exact_thresh, f, indent=4)
+  with open("eval_results/debugging_eval_results/f1_thresh_by_qid.json", 'w') as f:
+      json.dump(f1_thresh, f, indent=4)
   
   # --------------------------------------------------------
 

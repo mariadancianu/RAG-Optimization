@@ -11,9 +11,10 @@ from openai import OpenAI
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from sentence_transformers import SentenceTransformer
-
+import pprint
 
 load_dotenv()
+
 
 def convert_context_to_langchain_docs(df):
 
@@ -115,13 +116,15 @@ def query_vector_store(store_name, query, embedding_function, db_dir, k=3, score
 
 
 def save_llm_answers(df, 
-                    docs, 
-                    embeddings,
-                    embeddings_name="text-embedding-ada-002", 
-                    model_name="gpt-3.5-turbo",
-                    chunk_size=200, 
-                    num_context_documents=3,
-                    filename="pred_500.json"):
+                     docs, 
+                     embeddings,
+                     embeddings_name="text-embedding-ada-002", 
+                     model_name="gpt-3.5-turbo",
+                     chunk_size=200, 
+                     num_context_documents=3,
+                     filename="result.json", 
+                     results_folder="eval_results",
+                     save_context=False):
 
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
@@ -176,63 +179,76 @@ def save_llm_answers(df,
         )
         
         answer = response.choices[0].message.content
-        
-    # reference = context[0]  # Using first context as reference
-    # the reference is the GT?
-
         answers.append(answer)
-        contexts.append(context)
+
+        if save_context:
+            contexts.append(context)
   
-    preds = dict(zip(df_to_test["id"], answers))
+    preds_dict = dict(zip(df_to_test["id"], answers))
 
-    results_folder = "eval_results"
-    filepath = os.path.join(results_folder, filename)
+    filepath_pred = os.path.join(results_folder, f"pred_{filename}")
 
-    with open(filepath, "w") as f:
-        json.dump(preds, f, indent=4, sort_keys=True)
+    with open(filepath_pred, "w") as f:
+        json.dump(preds_dict, f, indent=4, sort_keys=True)
+    
+    if save_context:
+        contexts_dict = dict(zip(df_to_test["id"], contexts))
 
+        filepath_context = os.path.join(results_folder, f"context_{filename}")
 
-def fine_tune_rag(df, langchain_docs):
-    # helpful function to merge all the scores to the questions df, for debugging purposes 
+        with open(filepath_context, "w") as f:
+            json.dump(contexts_dict, f, indent=4, sort_keys=True)
 
-    # TODO: try different text splitters
-    # TODO: improve num of documents retrieved and the retrieval threshold 
-
-    #chunk_sizes = [100, 200, 300, 400, 500, 800, 1200, 1600]
-    chunk_sizes =  [100, 200, 400, 500, 600] #[600, 800]
-
-    models = ["gpt-3.5-turbo"]
-
-    embed_options = {
+parameters_dict = {
+    "chunk_sizes": [100, 200, 400, 500, 600],
+    "embed_options": { 
         "text-embedding-3-small": "OpenAI", 
         "text-embedding-3-large": "OpenAI", 
-        "text-embedding-ada-002": "OpenAI"  
-        #"voyageai/voyage-3-m-exp": "custom" # best retrieval model mar 2025 based on HuggingFace MTEB leaderboard, but proprietary model, paid 
+        "text-embedding-ada-002": "OpenAI",
+         #"voyageai/voyage-3-m-exp": "custom" # best retrieval model mar 2025 based on HuggingFace MTEB leaderboard, but proprietary model, paid 
         # "Snowflake/snowflake-arctic-embed-l-v2.0": "HuggingFace_SentenceTransformers"# ranked 6th, 568M params
-    }
-                  
+        },
+    "models": ["gpt-3.5-turbo"]
+}
+
+
+def fine_tune_rag(df, 
+                  langchain_docs, 
+                  parameters_dict=parameters_dict,
+                  results_folder="eval_results", 
+                  save_context=False):
+   
+    print("Fine tuning RAG with the following parameters: ")
+    pprint.pprint(parameters_dict)
+
+    chunk_sizes = parameters_dict.get("chunk_sizes", [100])
+    embed_options = parameters_dict.get("embed_options", {"text-embedding-3-small": "OpenAI"})
+    models = parameters_dict.get("models", ["gpt-3.5-turbo"])
    
     for embeddings_name, embeddings_platform in embed_options.items(): 
-        cache_dir = './model_cache'
+        #cache_dir = './model_cache'
 
         if embeddings_platform == "OpenAI": 
             embeddings = OpenAIEmbeddings(model=embeddings_name)
+        else:
+            print("Embeddings error")
+
+        """
         elif embeddings_platform == "HuggingFace":
             embeddings = HuggingFaceEmbeddings(model_name=embeddings_name, show_progress=True)
         elif embeddings_platform == "HuggingFace_SentenceTransformers":
             embeddings = SentenceTransformer(embeddings_name, cache_folder=cache_dir) 
-       # elif embeddings_platform == "custom":
-        #    cache_dir = './model_cache'
+        elif embeddings_platform == "custom":
+            cache_dir = './model_cache'
             #embeddings = VoyageEmbeddings(voyage_api_key="", model="voyage-3") # proprietary, paid 
-        else:
-            print("Embeddings error")
+            # """
         
         for model_name in models: 
             for chunk_size in chunk_sizes:
                 print(f"Running {model_name} - {chunk_size} - {embeddings_name}")
 
-                filename = f"pred_500_{chunk_size}_{embeddings_name}_{model_name}.json"
-                filepath = os.path.join("eval_results", filename)
+                filename = f"500_{chunk_size}_{embeddings_name}_{model_name}.json"
+                filepath = os.path.join(results_folder, f"pred_{filename}")
 
                 if os.path.isfile(filepath):
                     print("Results already exist for these settings: skipping!")
@@ -246,5 +262,7 @@ def fine_tune_rag(df, langchain_docs):
                     model_name=model_name, 
                     chunk_size=chunk_size, 
                     num_context_documents=3,
-                    filename=filename
+                    filename=filename,
+                    results_folder=results_folder,
+                    save_context=save_context
                 ) 

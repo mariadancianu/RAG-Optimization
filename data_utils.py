@@ -3,7 +3,6 @@ import os
 import pandas as pd 
 import numpy as np 
 
-
 def convert_json_to_dataframe():
 
     filename = "data.json"
@@ -142,39 +141,58 @@ def create_json_subset(df_sel):
         json.dump(all_res, f)
 
 
-def merge_results():
+def merge_results(f1_filepath,
+                  exact_filepath, 
+                  pred_filepath, 
+                  df_questions_filepath, 
+                  context_filepath=None,
+                  filepath_500=None,
+                  filter_500=False):
 
-    # TODO: remove redundant code, replace with for loop 
-    filename = "f1_thresh_by_qid.json"
-    with open(filename, "rb") as f:
+    with open(f1_filepath, "rb") as f:
         f1_scores = json.load(f)
         
     df_scores = pd.DataFrame.from_dict(f1_scores, orient="index", columns=["f1_score"])
     df_scores.index.name = "id"
     df_scores.reset_index(inplace=True, drop=False)
-    
-    filename = "exact_thresh_by_qid.json"
-    with open(filename, "rb") as f:
+ 
+    with open(exact_filepath, "rb") as f:
         exact_scores = json.load(f)
         
     df_scores_exact = pd.DataFrame.from_dict(exact_scores, orient="index", columns=["exact_score"])
     df_scores_exact.index.name = "id"
     df_scores_exact.reset_index(inplace=True, drop=False)
     
-
-    filename = "pred.json"
-    with open(filename, "rb") as f:
+    #filename = "pred.json"
+    with open(pred_filepath, "rb") as f:
         pred = json.load(f)
         
     df_pred = pd.DataFrame.from_dict(pred, orient="index", columns=["pred"])
     df_pred.index.name = "id"
     df_pred.reset_index(inplace=True, drop=False)
     
-    df = pd.read_csv("df_questions_all.csv")
+    df = pd.read_csv(df_questions_filepath) 
     df = df.merge(df_scores, how="left", on="id")
     df = df.merge(df_scores_exact, how="left", on="id")
     df = df.merge(df_pred, how="left", on="id")
 
+    if context_filepath is not None:
+        with open(context_filepath, "rb") as f:
+            contexts = json.load(f)
+            
+        df_contexts = pd.DataFrame.from_dict(contexts, orient="index", columns=["rag_retrieved_context"])
+        df_contexts.index.name = "id"
+        df_contexts.reset_index(inplace=True, drop=False)
+        df = df.merge(df_contexts, how="left", on="id")
+
+    if filter_500 and filepath_500 is not None: 
+        with open(filepath_500, "rb") as f:
+            questions_500 = json.load(f)
+
+        questions_id = list(questions_500.keys())
+
+        df = df[df["id"].isin(questions_id)]
+   
     return df 
 
 
@@ -200,3 +218,4 @@ def collect_all_results(results_path):
     df_all = pd.concat(all_res, ignore_index=True)
 
     return df_all
+
