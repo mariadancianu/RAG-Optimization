@@ -362,12 +362,14 @@ class CustomRAG:
         preds_dict = dict(zip(questions_ids, answers))
         contexts_dict = dict(zip(questions_ids, contexts))
 
-        filepath_pred = os.path.join(self.results_folder, f"pred_{self.filename}")
+        filepath_pred = os.path.join(self.results_folder, f"pred_{self.filename}.json")
 
         with open(filepath_pred, "w") as f:
             json.dump(preds_dict, f, indent=4, sort_keys=True)
 
-        filepath_context = os.path.join(self.results_folder, f"context_{self.filename}")
+        filepath_context = os.path.join(
+            self.results_folder, f"context_{self.filename}.json"
+        )
 
         with open(filepath_context, "w") as f:
             json.dump(contexts_dict, f, indent=4, sort_keys=True)
