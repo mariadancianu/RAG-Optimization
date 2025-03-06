@@ -252,8 +252,8 @@ class CustomRAG:
         Returns:
             List[LangchainDocument]: The relevant documents.
         """
-        print("Querying chroma vector store")
-        print(query)
+        #print("Querying chroma vector store")
+        #print(query)
 
         persistent_directory = os.path.join(self.vector_db_folder, self.vector_database_name)
 
@@ -310,7 +310,7 @@ class CustomRAG:
 
         context = "\n\n".join([f"Source {i+1}: {doc.page_content}" for i, doc in enumerate(relevant_docs)])
 
-        print(f"** Context: {context}")
+        #print(f"** Context: {context}")
 
         prompt = self.prompt_message % (context, query)
 
