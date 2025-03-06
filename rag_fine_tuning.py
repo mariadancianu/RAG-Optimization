@@ -336,13 +336,22 @@ class CustomRAG:
 
         prompt = self.prompt_message % (context, query)
 
-        response = self.llm_initialized_client.chat.completions.create(
-            model=self.llm,
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": query},
-            ],
-        )
+        if self.llm_client == "OpenAI":
+            response = self.llm_initialized_client.chat.completions.create(
+                model=self.llm,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": query},
+                ],
+            )
+        elif self.llm_client == "Mistral":
+            response = self.llm_initialized_client.chat.complete(
+                model=self.llm,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": query},
+                ],
+            )
 
         answer = response.choices[0].message.content
 
