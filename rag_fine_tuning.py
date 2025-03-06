@@ -1,19 +1,20 @@
-import os 
-import tqdm 
 import json
-from typing import List, Dict, Optional, Any, Tuple
+import os
+import pprint
+from copy import deepcopy
+from typing import Any, Dict, List, Optional, Tuple
+
+import chromadb
+import pandas as pd
+import tqdm
+from dotenv import load_dotenv
 from langchain.docstore.document import Document as LangchainDocument
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
-from dotenv import load_dotenv
-from openai import OpenAI
 from langchain_openai import OpenAIEmbeddings
-from sentence_transformers import SentenceTransformer
-import pprint
-import chromadb
 from mistralai import Mistral
-from copy import deepcopy
-import pandas as pd
+from openai import OpenAI
+from sentence_transformers import SentenceTransformer
 
 load_dotenv()
 
