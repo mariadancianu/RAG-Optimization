@@ -1,8 +1,15 @@
-## RAG Fine-Tuning Experiments on the SQuAD Dataset
+# RAG Fine-Tuning Experiments on the SQuAD Dataset
 
-This repository contains a series of Retrieval-Augmented Generation (RAG) fine-tuning experiments conducted for learning and research purposes. The focus is on improving retrieval quality and generation performance using the [SQuAD dataset](https://rajpurkar.github.io/SQuAD-explorer/) (Stanford Question Answering Dataset).
 
-### Overview
+## 📌 Project Overview
+
+This repository contains a series of Retrieval-Augmented Generation (RAG) fine-tuning experiments conducted for learning and research purposes.
+
+The focus is on improving retrieval quality and generation performance using the [SQuAD dataset](https://rajpurkar.github.io/SQuAD-explorer/) (Stanford Question Answering Dataset).
+
+## 🎯 Objectives
+
+The primary goal of these experiments is to understand how to fine-tune a RAG pipeline effectively and optimize various components, including retrieval quality, embeddings, and response generation.
 
 The experiments in this repository explore:
 
@@ -11,10 +18,22 @@ The experiments in this repository explore:
 - Optimizing the retrieval process to improve answer accuracy.
 - Testing various chunking strategies for document preprocessing.
 
-### Dataset
 
-The SQuAD dataset is used as the knowledge source for retrieval. The dataset consists of question-answer pairs based on Wikipedia articles, making it a great benchmark for assessing retrieval-augmented models.
+## 🛠️ Tech Stack
 
-### Objective
+- Python (3.12+ recommended)
+- LangChain
+- HuggingFace
+- OpenAI
 
-The primary goal of these experiments is to understand how to fine-tune a RAG pipeline effectively and optimize various components, including retrieval quality, embeddings, and response generation.
+
+## 🔄 Status
+
+Project is: In Progress
+
+
+#
+
+📝 Author: Maria Dancianu
+
+📅 Last Updated: March 2025
