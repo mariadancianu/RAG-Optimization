@@ -6,7 +6,6 @@ import pandas as pd
 
 
 def convert_json_to_dataframe():
-
     filename = "data.json"
 
     with open(filename, "rb") as f:
@@ -18,12 +17,12 @@ def convert_json_to_dataframe():
 
     for list_idx, list_item in enumerate(data):
         title = list_item["title"]
-   
+
         paragraphs = list_item["paragraphs"]
-       
+
         for p_idx, paragraph in enumerate(paragraphs):
             paragraph_res = []
-            
+
             context = paragraph["context"]
 
             for q_idx, qas in enumerate(paragraph["qas"]):
@@ -31,35 +30,35 @@ def convert_json_to_dataframe():
                 is_impossible = qas["is_impossible"]
                 answers = qas["answers"]
                 question_id = qas["id"]
-                
+
                 # TODO: add plausible answers
-                res = {"question": question, 
+                res = {
+                    "question": question,
                     "list_idx": list_idx,
                     "paragraph_idx": p_idx,
                     "question_idx": q_idx,
-                    "id": question_id, 
+                    "id": question_id,
                     "is_impossible": is_impossible,
                     "answer_0": np.nan,
                     "answer_1": np.nan,
                     "answer_2": np.nan,
-                    "answer_3": np.nan
+                    "answer_3": np.nan,
                 }
-                
-                if len(answers) > 0: 
-                    for idx, answer in enumerate(answers): 
+
+                if len(answers) > 0:
+                    for idx, answer in enumerate(answers):
                         res[f"answer_{idx}"] = answer["text"]
-                    
+
                 paragraph_res.append(res)
 
             paragraph_df = pd.DataFrame(paragraph_res)
             paragraph_df["context"] = context
             paragraph_df["title"] = title
-            
+
             df_all_data = pd.concat([df_all_data, paragraph_df], ignore_index=True)
-    
+
     print("Saving dataframe of shape: ", df_all_data.shape)
     df_all_data.to_csv("dataset.csv", index=False)
-
 
 
 def create_json_subset(df_sel):
@@ -77,12 +76,11 @@ def create_json_subset(df_sel):
         print("title", title)
 
         paragraphs = []
-        
-        list_res = {"title": title, 
-                    "paragraphs": paragraphs}
-        
+
+        list_res = {"title": title, "paragraphs": paragraphs}
+
         paragraphs_idx = set(df_idx.paragraph_idx)
-        
+
         print(paragraphs_idx)
 
         paragraphs_res = []
@@ -100,7 +98,7 @@ def create_json_subset(df_sel):
                 question_idx = set(questions_df.question_idx)
 
                 questions_list = []
-            
+
                 for q_idx in question_idx:
                     question_df = questions_df[questions_df.question_idx == q_idx]
 
@@ -110,70 +108,72 @@ def create_json_subset(df_sel):
 
                     answers = []
 
-                    for i in range(0,3):
+                    for i in range(0, 3):
                         answer = question_df[f"answer_{i}"].iloc[0]
 
                         if answer == answer:
-                        
                             answers.append({"text": answer})
-                    
+
                     if is_impossible:
                         impossible_str = "true"
                     else:
                         impossible_str = "false"
-                    
-                    question_res = {"question": question,  
-                                    "id": question_id,
-                                    "answers": answers,
-                                    "is_impossible": impossible_str
-                                }
-                    
+
+                    question_res = {
+                        "question": question,
+                        "id": question_id,
+                        "answers": answers,
+                        "is_impossible": impossible_str,
+                    }
+
                     questions_list.append(question_res)
 
                 paragraph_res["qas"] = questions_list
-                    
-            
+
             paragraphs.append(paragraph_res)
 
         all_res_list.append(list_res)
-            
+
     all_res["data"] = all_res_list
 
     with open("eval_results/data_updated_500.json", "w") as f:
         json.dump(all_res, f)
 
 
-def merge_results(f1_filepath,
-                  exact_filepath, 
-                  pred_filepath, 
-                  df_questions_filepath, 
-                  context_filepath=None,
-                  filepath_500=None,
-                  filter_500=False):
-
+def merge_results(
+    f1_filepath,
+    exact_filepath,
+    pred_filepath,
+    df_questions_filepath,
+    context_filepath=None,
+    filepath_500=None,
+    filter_500=False,
+):
     with open(f1_filepath, "rb") as f:
         f1_scores = json.load(f)
-        
+
     df_scores = pd.DataFrame.from_dict(f1_scores, orient="index", columns=["f1_score"])
     df_scores.index.name = "id"
     df_scores.reset_index(inplace=True, drop=False)
- 
+
     with open(exact_filepath, "rb") as f:
         exact_scores = json.load(f)
-        
-    df_scores_exact = pd.DataFrame.from_dict(exact_scores, orient="index", columns=["exact_score"])
+
+    df_scores_exact = pd.DataFrame.from_dict(
+        exact_scores, orient="index", columns=["exact_score"]
+    )
     df_scores_exact.index.name = "id"
     df_scores_exact.reset_index(inplace=True, drop=False)
-    
-    #filename = "pred.json"
+
+    # filename = "pred.json"
     with open(pred_filepath, "rb") as f:
         pred = json.load(f)
-        
+
     df_pred = pd.DataFrame.from_dict(pred, orient="index", columns=["pred"])
     df_pred.index.name = "id"
     df_pred.reset_index(inplace=True, drop=False)
-    
-    df = pd.read_csv(df_questions_filepath) 
+
+    df = pd.read_csv(df_questions_filepath)
     df = df.merge(df_scores, how="left", on="id")
     df = df.merge(df_scores_exact, how="left", on="id")
     df = df.merge(df_pred, how="left", on="id")
@@ -181,43 +181,45 @@ def merge_results(f1_filepath,
     if context_filepath is not None:
         with open(context_filepath, "rb") as f:
             contexts = json.load(f)
-            
-        df_contexts = pd.DataFrame.from_dict(contexts, orient="index", columns=["rag_retrieved_context"])
+
+        df_contexts = pd.DataFrame.from_dict(
+            contexts, orient="index", columns=["rag_retrieved_context"]
+        )
         df_contexts.index.name = "id"
         df_contexts.reset_index(inplace=True, drop=False)
         df = df.merge(df_contexts, how="left", on="id")
 
-    if filter_500 and filepath_500 is not None: 
+    if filter_500 and filepath_500 is not None:
         with open(filepath_500, "rb") as f:
             questions_500 = json.load(f)
 
         questions_id = list(questions_500.keys())
 
         df = df[df["id"].isin(questions_id)]
-   
-    return df 
+
+    return df
 
 
 def collect_all_results(results_path):
-
     all_res = []
 
     files = os.listdir(results_path)
     files = [f for f in files if f.startswith("eval_pred_500") and f.endswith("json")]
 
     for f in files:
-        filepath = os.path.join(results_path, f) 
-       
+        filepath = os.path.join(results_path, f)
+
         with open(filepath, "rb") as file_to_load:
             res = json.load(file_to_load)
-        
+
         res["experiment"] = f
 
-        df_res = pd.DataFrame.from_dict({k: [v] for k, v in res.items()}, orient="columns")
-      
+        df_res = pd.DataFrame.from_dict(
+            {k: [v] for k, v in res.items()}, orient="columns"
+        )
+
         all_res.append(df_res)
-    
+
     df_all = pd.concat(all_res, ignore_index=True)
 
     return df_all
-

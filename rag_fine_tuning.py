@@ -19,7 +19,7 @@ from sentence_transformers import SentenceTransformer
 load_dotenv()
 
 prompt_message = f"""
-You are a highly accurate and reliable assistant. Answer the user's question using **only** the provided context. 
+You are a highly accurate and reliable assistant. Answer the user's question using **only** the provided context.
 If the answer is not in the context, return an empty response (**""**) without making up information.
 
 Context:
@@ -41,9 +41,7 @@ Answer (just the answer, no extra words, or "" if unknown):
 
 
 class JSONDefaultConfigFile:
-    def __init__(self, 
-                 file_path: Optional[str] = None, 
-                 default: Dict[str, Any] = {}):
+    def __init__(self, file_path: Optional[str] = None, default: Dict[str, Any] = {}):
         """
         Initialize the JSONDefaultConfigFile with a file path and default properties.
 
@@ -52,7 +50,7 @@ class JSONDefaultConfigFile:
             default (Dict[str, Any]): Default properties for the configuration.
         """
         if file_path is None:
-            self.file_path = '/Users/mariadancianu/Desktop/Git Projects/SQuAD_RAG_experiments/default_rag_config.json'
+            self.file_path = "/Users/mariadancianu/Desktop/Git Projects/SQuAD_RAG_experiments/default_rag_config.json"
         else:
             self.file_path = file_path
 
@@ -66,7 +64,7 @@ class JSONDefaultConfigFile:
             Dict[str, Any]: The configuration dictionary.
         """
         configurations = deepcopy(self._default_properties)
-        
+
         with open(self.file_path) as file:
             configurations.update(json.load(file))
 
@@ -74,12 +72,14 @@ class JSONDefaultConfigFile:
 
 
 class CustomRAG:
-    def __init__(self,
-                 knowledge_base: List[LangchainDocument], 
-                 prompt_message: str,
-                 config: Optional[Dict[str, Any]] = None,  
-                 results_folder: Optional[str] = None,
-                 vector_db_folder: Optional[str] = None):
+    def __init__(
+        self,
+        knowledge_base: List[LangchainDocument],
+        prompt_message: str,
+        config: Optional[Dict[str, Any]] = None,
+        results_folder: Optional[str] = None,
+        vector_db_folder: Optional[str] = None,
+    ):
         """
         Initialize the CustomRAG class with the given parameters.
 
@@ -96,24 +96,24 @@ class CustomRAG:
         if config is None:
             print("Warning: the RAG configurations are missing! Using the default ones")
             config = self.default_rag_config
-       
+
         if results_folder is None:
             results_folder = os.getcwd()
-     
+
         if vector_db_folder is None:
             vector_db_folder = os.getcwd()
 
-        self.config = config 
+        self.config = config
         self.results_folder = results_folder
         self.vector_db_folder = vector_db_folder
-        self.knowledge_base = knowledge_base 
+        self.knowledge_base = knowledge_base
         self.prompt_message = prompt_message
 
         pprint.pprint(f"CustomRAG config: {config}")
 
         self.set_config_options()
         self.create_required_folders()
- 
+
     def set_config_options(self) -> None:
         """
         Set the configuration options for the CustomRAG instance.
@@ -131,7 +131,7 @@ class CustomRAG:
         self.vector_database_name = f"{self.chunk_size}_{self.embeddings_model_name}"
 
         self.filename = f"{self.chunk_size}_{self.embeddings_model_name}_{self.llm}"
-       
+
     def create_required_folders(self) -> None:
         """
         Create the required folders for results and vector database if they do not exist.
@@ -145,23 +145,27 @@ class CustomRAG:
         """
         Initialize the embeddings function based on the platform specified in the configuration.
         """
-        cache_dir = './model_cache'
+        cache_dir = "./model_cache"
 
         supported_platforms = ["OpenAI", "SentenceTransformers"]
 
         if self.embeddings_platform not in supported_platforms:
             print("Warning: {self.embeddings_platform} is not supported yet")
             print("Switching to default platform")
-            
+
             self.embeddings_platform = "OpenAI"
 
         self.embeddings_function = None
 
-        if self.embeddings_platform == "OpenAI": 
-            self.embeddings_function = OpenAIEmbeddings(model=self.embeddings_model_name)
+        if self.embeddings_platform == "OpenAI":
+            self.embeddings_function = OpenAIEmbeddings(
+                model=self.embeddings_model_name
+            )
         elif self.embeddings_platform == "SentenceTransformers":
-            self.embeddings_function = SentenceTransformer(self.embeddings_model_name, cache_folder=cache_dir) 
-     
+            self.embeddings_function = SentenceTransformer(
+                self.embeddings_model_name, cache_folder=cache_dir
+            )
+
     def initialize_llm_client(self) -> None:
         """
         Initialize the LLM client based on the client specified in the configuration.
@@ -177,11 +181,17 @@ class CustomRAG:
         self.llm_initialized_client = None
 
         if self.llm_client == "OpenAI":
-            self.llm_initialized_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-        elif self.llm_client == "Mistral": 
-            self.llm_initialized_client = Mistral(api_key=os.environ.get("MISTRAL_API_KEY"))
+            self.llm_initialized_client = OpenAI(
+                api_key=os.environ.get("OPENAI_API_KEY")
+            )
+        elif self.llm_client == "Mistral":
+            self.llm_initialized_client = Mistral(
+                api_key=os.environ.get("MISTRAL_API_KEY")
+            )
 
-    def split_documents(self, knowledge_base: List[LangchainDocument]) -> List[LangchainDocument]:
+    def split_documents(
+        self, knowledge_base: List[LangchainDocument]
+    ) -> List[LangchainDocument]:
         """
         Split the documents in the knowledge base into smaller chunks.
 
@@ -197,9 +207,9 @@ class CustomRAG:
             add_start_index=True,
             separators=["\n\n", "\n", ".", " ", ""],
         )
-        
+
         docs_processed = []
-        
+
         for doc in knowledge_base:
             docs_processed += text_splitter.split_documents([doc])
 
@@ -211,17 +221,24 @@ class CustomRAG:
         """
         docs_processed = self.split_documents(self.knowledge_base)
 
-        persistent_directory = os.path.join(self.vector_db_folder, self.vector_database_name)
-        
+        persistent_directory = os.path.join(
+            self.vector_db_folder, self.vector_database_name
+        )
+
         if not os.path.exists(persistent_directory):
             print(f"Creating vector store {self.vector_database_name}")
 
             Chroma.from_documents(
-                docs_processed, self.embeddings_function, persist_directory=persistent_directory)
-            
+                docs_processed,
+                self.embeddings_function,
+                persist_directory=persistent_directory,
+            )
+
             print(f"Finished creating vector store {self.vector_database_name}")
         else:
-            print(f"Vector store {self.vector_database_name} already exists. No need to initialize.")
+            print(
+                f"Vector store {self.vector_database_name} already exists. No need to initialize."
+            )
 
     def create_vector_database(self) -> None:
         """
@@ -238,10 +255,9 @@ class CustomRAG:
         if self.vector_database == "chromadb":
             self.create_chroma_vector_store()
 
-    def query_chroma_vector_store(self, 
-                                  query: str,
-                                  n_results: int = 3, 
-                                  score_threshold: float = 0.1) -> List[LangchainDocument]:
+    def query_chroma_vector_store(
+        self, query: str, n_results: int = 3, score_threshold: float = 0.1
+    ) -> List[LangchainDocument]:
         """
         Query the Chroma vector store for relevant documents.
 
@@ -253,13 +269,15 @@ class CustomRAG:
         Returns:
             List[LangchainDocument]: The relevant documents.
         """
-        #print("Querying chroma vector store")
-        #print(query)
+        # print("Querying chroma vector store")
+        # print(query)
 
-        persistent_directory = os.path.join(self.vector_db_folder, self.vector_database_name)
+        persistent_directory = os.path.join(
+            self.vector_db_folder, self.vector_database_name
+        )
 
         relevant_docs = []
-        
+
         if os.path.exists(persistent_directory):
             db = Chroma(
                 persist_directory=persistent_directory,
@@ -275,10 +293,9 @@ class CustomRAG:
 
         return relevant_docs
 
-    def query_vector_store(self, 
-                           query: str,
-                           n_results: int = 3,
-                           score_threshold: float = 0.1) -> List[LangchainDocument]:
+    def query_vector_store(
+        self, query: str, n_results: int = 3, score_threshold: float = 0.1
+    ) -> List[LangchainDocument]:
         """
         Query the vector store for relevant documents.
 
@@ -293,8 +310,10 @@ class CustomRAG:
         relevant_docs = []
 
         if self.vector_database == "chromadb":
-            relevant_docs = self.query_chroma_vector_store(query, n_results, score_threshold)
-        
+            relevant_docs = self.query_chroma_vector_store(
+                query, n_results, score_threshold
+            )
+
         return relevant_docs
 
     def get_llm_single_question_answer(self, query: str) -> Tuple[str, str]:
@@ -309,9 +328,11 @@ class CustomRAG:
         """
         relevant_docs = self.query_vector_store(query)
 
-        context = "\n\n".join([f"Source {i+1}: {doc.page_content}" for i, doc in enumerate(relevant_docs)])
+        context = "\n\n".join(
+            [f"Source {i+1}: {doc.page_content}" for i, doc in enumerate(relevant_docs)]
+        )
 
-        #print(f"** Context: {context}")
+        # print(f"** Context: {context}")
 
         prompt = self.prompt_message % (context, query)
 
@@ -319,18 +340,17 @@ class CustomRAG:
             model=self.llm,
             messages=[
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": query}
-            ]
+                {"role": "user", "content": query},
+            ],
         )
-        
+
         answer = response.choices[0].message.content
 
-        return answer, context 
+        return answer, context
 
-    def save_llm_results(self, 
-                         questions_ids: List[str],
-                         answers: List[str],
-                         contexts: List[str]) -> None:
+    def save_llm_results(
+        self, questions_ids: List[str], answers: List[str], contexts: List[str]
+    ) -> None:
         """
         Save the LLM results to files.
 
@@ -346,7 +366,7 @@ class CustomRAG:
 
         with open(filepath_pred, "w") as f:
             json.dump(preds_dict, f, indent=4, sort_keys=True)
-     
+
         filepath_context = os.path.join(self.results_folder, f"context_{self.filename}")
 
         with open(filepath_context, "w") as f:
@@ -377,7 +397,9 @@ class CustomRAG:
         self.save_llm_results(questions_ids, answers, contexts)
 
 
-def convert_knowledge_base_to_langchain_docs(df: pd.DataFrame) -> List[LangchainDocument]:
+def convert_knowledge_base_to_langchain_docs(
+    df: pd.DataFrame,
+) -> List[LangchainDocument]:
     """
     Convert the context knowledge base in the DataFrame to Langchain documents.
 
@@ -392,10 +414,8 @@ def convert_knowledge_base_to_langchain_docs(df: pd.DataFrame) -> List[Langchain
     for _, row in df.drop_duplicates(subset="context").iterrows():
         context = row.context
         title = row.title
-        
-        document = LangchainDocument(
-            page_content=context,
-            metadata={"title": title})
+
+        document = LangchainDocument(page_content=context, metadata={"title": title})
 
         langchain_docs.append(document)
 
@@ -403,10 +423,10 @@ def convert_knowledge_base_to_langchain_docs(df: pd.DataFrame) -> List[Langchain
 
 
 """
-def create_vector_store_new(docs, 
-                            embeddings_function, 
-                            store_name, 
-                            db_dir, 
+def create_vector_store_new(docs,
+                            embeddings_function,
+                            store_name,
+                            db_dir,
                             chunk_size: int = 200,
                             chunk_overlap: int = 15):
 
@@ -414,7 +434,7 @@ def create_vector_store_new(docs,
 
     docs = [doc.page_content for doc in docs_processed]
 
-    document_embeddings = embeddings_function.encode(docs) 
+    document_embeddings = embeddings_function.encode(docs)
 
     persistent_directory = os.path.join(db_dir, store_name)
 
@@ -424,18 +444,18 @@ def create_vector_store_new(docs,
     ids = [f"id{i}" for i in list(range(len(docs)))]
 
     # Ensure the number of IDs matches the number of documents
-    # note: use upsert instead of add to avoid adding existing documents 
+    # note: use upsert instead of add to avoid adding existing documents
     collection.upsert(
-        ids=ids,  
-        documents=docs, 
-        embeddings=document_embeddings  
+        ids=ids,
+        documents=docs,
+        embeddings=document_embeddings
     )
 
-def query_vector_store_new(store_name, 
-                           query, 
+def query_vector_store_new(store_name,
+                           query,
                            embeddings_function,
-                           db_dir, 
-                           n_results=3, 
+                           db_dir,
+                           n_results=3,
                            score_threshold=0.1):
 
     persistent_directory = os.path.join(db_dir, store_name)
@@ -459,21 +479,22 @@ def query_vector_store_new(store_name,
 
 parameters_dict = {
     "chunk_sizes": [100, 200, 400, 500, 600],
-    "embed_options": { 
-        "text-embedding-3-small": "OpenAI", 
-        "text-embedding-3-large": "OpenAI", 
+    "embed_options": {
+        "text-embedding-3-small": "OpenAI",
+        "text-embedding-3-large": "OpenAI",
         "text-embedding-ada-002": "OpenAI",
     },
-    "models": {"gpt-3.5-turbo": "OpenAI", 
-               "mistral-large-latest": "Mistral"}
+    "models": {"gpt-3.5-turbo": "OpenAI", "mistral-large-latest": "Mistral"},
 }
 
 
-def fine_tune_rag(df: pd.DataFrame, 
-                  knowledge_base_docs: List[LangchainDocument], 
-                  parameters_dict: Dict[str, Any] = parameters_dict,
-                  results_folder: str = "eval_results", 
-                  vector_db_folder: str = "vector_databases") -> None:
+def fine_tune_rag(
+    df: pd.DataFrame,
+    knowledge_base_docs: List[LangchainDocument],
+    parameters_dict: Dict[str, Any] = parameters_dict,
+    results_folder: str = "eval_results",
+    vector_db_folder: str = "vector_databases",
+) -> None:
     """
     Fine-tune the RAG model with the given parameters.
 
@@ -488,11 +509,13 @@ def fine_tune_rag(df: pd.DataFrame,
     pprint.pprint(parameters_dict)
 
     chunk_sizes = parameters_dict.get("chunk_sizes", [100])
-    embed_options = parameters_dict.get("embed_options", {"text-embedding-3-small": "OpenAI"})
+    embed_options = parameters_dict.get(
+        "embed_options", {"text-embedding-3-small": "OpenAI"}
+    )
     models = parameters_dict.get("models", {"gpt-3.5-turbo": "openai"})
-   
-    for embeddings_name, embeddings_platform in embed_options.items(): 
-        for model_name, client in models.items(): 
+
+    for embeddings_name, embeddings_platform in embed_options.items():
+        for model_name, client in models.items():
             for chunk_size in chunk_sizes:
                 print(f"Running {model_name} - {chunk_size} - {embeddings_name}")
 
@@ -501,24 +524,25 @@ def fine_tune_rag(df: pd.DataFrame,
 
                 if os.path.isfile(filepath):
                     print("Results already exist for these settings: skipping!")
-                    continue 
-                
+                    continue
+
                 parameters_dict = {
-                    "chunk_size": chunk_size, 
+                    "chunk_size": chunk_size,
                     "chunk_overlap": 15,
                     "vector_database": "chromadb",
                     "embeddings_function": {
                         "model_name": embeddings_name,
-                        "platform": embeddings_platform},
-                    "llm": {
-                        "model_name": model_name,
-                        "client": client}
+                        "platform": embeddings_platform,
+                    },
+                    "llm": {"model_name": model_name, "client": client},
                 }
 
-                rag = CustomRAG(knowledge_base=knowledge_base_docs, 
-                                prompt_message=prompt_message,
-                                config=parameters_dict, 
-                                results_folder=results_folder, 
-                                vector_db_folder=vector_db_folder)
+                rag = CustomRAG(
+                    knowledge_base=knowledge_base_docs,
+                    prompt_message=prompt_message,
+                    config=parameters_dict,
+                    results_folder=results_folder,
+                    vector_db_folder=vector_db_folder,
+                )
 
                 rag.get_llm_multiple_questions_answers(df)
