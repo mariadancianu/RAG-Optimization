@@ -347,10 +347,10 @@ def main():
     # ADDED
 
     # save the results for each question
-    with open("eval_results/debugging_eval_results/exact_thresh_by_qid.json", "w") as f:
-        json.dump(exact_thresh, f, indent=4)
-    with open("eval_results/debugging_eval_results/f1_thresh_by_qid.json", "w") as f:
-        json.dump(f1_thresh, f, indent=4)
+    # with open("eval_results/debugging_eval_results/exact_thresh_by_qid.json", "w") as f:
+    #    json.dump(exact_thresh, f, indent=4)
+    # with open("eval_results/debugging_eval_results/f1_thresh_by_qid.json", "w") as f:
+    #   json.dump(f1_thresh, f, indent=4)
 
     # --------------------------------------------------------
 
