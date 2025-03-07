@@ -50,7 +50,7 @@ class JSONDefaultConfigFile:
             default (Dict[str, Any]): Default properties for the configuration.
         """
         if file_path is None:
-            self.file_path = "/Users/mariadancianu/Desktop/Git Projects/SQuAD_RAG_experiments/default_rag_config.json"
+            self.file_path = "./default_rag_config.json"
         else:
             self.file_path = file_path
 
@@ -79,6 +79,7 @@ class CustomRAG:
         config: Optional[Dict[str, Any]] = None,
         results_folder: Optional[str] = None,
         vector_db_folder: Optional[str] = None,
+        save_results=True,
     ):
         """
         Initialize the CustomRAG class with the given parameters.
@@ -108,6 +109,7 @@ class CustomRAG:
         self.vector_db_folder = vector_db_folder
         self.knowledge_base = knowledge_base
         self.prompt_message = prompt_message
+        self.save_results = save_results
 
         pprint.pprint(f"CustomRAG config: {config}")
 
@@ -405,7 +407,8 @@ class CustomRAG:
             answers.append(answer)
             contexts.append(context)
 
-        self.save_llm_results(questions_ids, answers, contexts)
+        if self.save_results:
+            self.save_llm_results(questions_ids, answers, contexts)
 
 
 def convert_knowledge_base_to_langchain_docs(
