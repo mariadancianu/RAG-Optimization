@@ -499,7 +499,7 @@ parameters_dict = {
 }
 
 
-def fine_tune_rag(
+def optimize_rag_parameters(
     df: pd.DataFrame,
     knowledge_base_docs: List[LangchainDocument],
     parameters_dict: Dict[str, Any] = parameters_dict,
