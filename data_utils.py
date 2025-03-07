@@ -204,7 +204,7 @@ def collect_all_results(results_path):
     all_res = []
 
     files = os.listdir(results_path)
-    files = [f for f in files if f.startswith("eval_pred_500") and f.endswith("json")]
+    files = [f for f in files if f.startswith("eval_pred") and f.endswith("json")]
 
     for f in files:
         filepath = os.path.join(results_path, f)

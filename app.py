@@ -81,9 +81,6 @@ def response_generator_rag(query):
 
     answer, _ = rag.get_llm_single_question_answer(query)
 
-    print("***** here *****")
-    print(answer)
-
     return answer
 
 
