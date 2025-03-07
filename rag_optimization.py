@@ -4,7 +4,7 @@ import pprint
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
-import chromadb
+# import chromadb
 import pandas as pd
 import tqdm
 from dotenv import load_dotenv
@@ -99,10 +99,10 @@ class CustomRAG:
             config = self.default_rag_config
 
         if results_folder is None:
-            results_folder = os.getcwd()
+            results_folder = os.path.join(os.getcwd(), "eval_results")
 
         if vector_db_folder is None:
-            vector_db_folder = os.getcwd()
+            vector_db_folder = os.path.join(os.getcwd(), "vector_databases")
 
         self.config = config
         self.results_folder = results_folder
@@ -115,6 +115,9 @@ class CustomRAG:
 
         self.set_config_options()
         self.create_required_folders()
+        self.initialize_llm_client()
+        self.initialize_embeddings_function()
+        self.create_vector_database()
 
     def set_config_options(self) -> None:
         """
@@ -392,9 +395,6 @@ class CustomRAG:
         Args:
             questions_df (pd.DataFrame): The DataFrame containing questions and their IDs.
         """
-        self.initialize_llm_client()
-        self.initialize_embeddings_function()
-        self.create_vector_database()
 
         answers = []
         contexts = []
