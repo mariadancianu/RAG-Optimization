@@ -4,7 +4,7 @@ import pprint
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
-# import chromadb
+import chromadb
 import pandas as pd
 import replicate
 import tqdm
@@ -253,6 +253,68 @@ class CustomRAG:
                 f"Vector store {self.vector_database_name} already exists. No need to initialize."
             )
 
+    def create_chroma_vector_store_new(self) -> None:
+        """
+        Create a Chroma vector store for the processed documents.
+        """
+        # TODO: merge this function with create_chroma_vector_store
+
+        docs_processed = self.split_documents(self.knowledge_base)
+
+        docs = [doc.page_content for doc in docs_processed]
+
+        document_embeddings = self.embeddings_function.encode(docs)
+
+        persistent_directory = os.path.join(
+            self.vector_db_folder, self.vector_database_name
+        )
+
+        chroma_client = chromadb.PersistentClient(path=persistent_directory)
+        collection = chroma_client.get_or_create_collection(name=self.vector_database_name)
+
+        ids = [f"id{i}" for i in list(range(len(docs)))]
+
+        # Ensure the number of IDs matches the number of documents
+        # note: use upsert instead of add to avoid adding existing documents
+        collection.upsert(
+            ids=ids,
+            documents=docs,
+            embeddings=document_embeddings
+        )
+
+    def query_vector_store_new(
+        self, query: str, n_results: int = 3, score_threshold: float = 0.1
+    ) -> List[LangchainDocument]:
+        """
+        Query the Chroma vector store for relevant documents.
+
+        Args:
+            query (str): The query string.
+            n_results (int): The number of results to return.
+            score_threshold (float): The score threshold for filtering results.
+
+        Returns:
+            List[LangchainDocument]: The relevant documents.
+        """
+
+        persistent_directory = os.path.join(
+            self.vector_db_folder, self.vector_database_name
+        )
+
+        relevant_docs = []
+
+        if os.path.exists(persistent_directory):
+            query_embeddings = self.embeddings_function.encode(query)
+
+            chroma_client = chromadb.PersistentClient(path=persistent_directory)
+            collection = chroma_client.get_or_create_collection(name=self.vector_database_name)
+
+            relevant_docs = collection.query(query_embeddings=query_embeddings, n_results=n_results)
+        else:
+            print(f"Vector store {self.vector_database_name} does not exist.")
+
+        return relevant_docs
+
     def create_vector_database(self) -> None:
         """
         Create the vector database based on the configuration.
@@ -266,7 +328,10 @@ class CustomRAG:
             self.vector_database = "chromadb"
 
         if self.vector_database == "chromadb":
-            self.create_chroma_vector_store()
+            if self.embeddings_platform == "SentenceTransformers":
+                self.create_chroma_vector_store_new()
+            else:
+                self.create_chroma_vector_store()
 
     def query_chroma_vector_store(
         self, query: str, n_results: int = 3, score_threshold: float = 0.1
@@ -339,13 +404,19 @@ class CustomRAG:
         Returns:
             Tuple[str, str]: The answer and the context.
         """
-        relevant_docs = self.query_vector_store(query)
 
-        context = "\n\n".join(
-            [f"Source {i+1}: {doc.page_content}" for i, doc in enumerate(relevant_docs)]
-        )
+        if self.embeddings_platform == "SentenceTransformers":
+            relevant_docs = self.query_vector_store_new(query)
+            relevant_docs = relevant_docs["documents"][0]
+            context = "\n\n".join(doc for doc in relevant_docs)
+        else:
+            relevant_docs = self.query_vector_store(query)
 
-        # print(f"** Context: {context}")
+            context = "\n\n".join(
+                    [f"Source {i+1}: {doc.page_content}" for i, doc in enumerate(relevant_docs)]
+                )
+
+       # print(f"** Context: {context}")
 
         prompt = self.prompt_message % (context, query)
 
@@ -457,60 +528,6 @@ def convert_knowledge_base_to_langchain_docs(
 
     return langchain_docs
 
-
-"""
-def create_vector_store_new(docs,
-                            embeddings_function,
-                            store_name,
-                            db_dir,
-                            chunk_size: int = 200,
-                            chunk_overlap: int = 15):
-
-    docs_processed = split_documents(chunk_size=chunk_size, chunk_overlap=chunk_overlap, knowledge_base=docs)
-
-    docs = [doc.page_content for doc in docs_processed]
-
-    document_embeddings = embeddings_function.encode(docs)
-
-    persistent_directory = os.path.join(db_dir, store_name)
-
-    chroma_client = chromadb.PersistentClient(path=persistent_directory)
-    collection = chroma_client.get_or_create_collection(name=store_name)
-
-    ids = [f"id{i}" for i in list(range(len(docs)))]
-
-    # Ensure the number of IDs matches the number of documents
-    # note: use upsert instead of add to avoid adding existing documents
-    collection.upsert(
-        ids=ids,
-        documents=docs,
-        embeddings=document_embeddings
-    )
-
-def query_vector_store_new(store_name,
-                           query,
-                           embeddings_function,
-                           db_dir,
-                           n_results=3,
-                           score_threshold=0.1):
-
-    persistent_directory = os.path.join(db_dir, store_name)
-
-    relevant_docs = []
-
-    if os.path.exists(persistent_directory):
-        query_embeddings = embeddings_function.encode(query)
-
-        chroma_client = chromadb.PersistentClient(path=persistent_directory)
-        collection = chroma_client.get_or_create_collection(name=store_name)
-
-        relevant_docs = collection.query(query_embeddings=query_embeddings, n_results=n_results)
-    else:
-        print(f"Vector store {store_name} does not exist.")
-
-    return relevant_docs
-
-"""
 
 
 parameters_dict = {

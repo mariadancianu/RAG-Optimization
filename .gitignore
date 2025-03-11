@@ -6,3 +6,4 @@
 vector_databases/
 *.pyc
 __pycache__/
+model_cache/
