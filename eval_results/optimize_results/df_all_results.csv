@@ -1,0 +1,3 @@
+exact,f1,total,HasAns_exact,HasAns_f1,HasAns_total,NoAns_exact,NoAns_f1,NoAns_total,experiment
+64.2,68.36340423250641,500,63.71308016877637,72.49663340191223,237,64.63878326996198,64.63878326996198,263,eval_pred_400_text-embedding-3-small_claude-3.5-sonnet.json
+60.8,65.22099415204679,500,60.33755274261603,69.66454462457128,237,61.21673003802282,61.21673003802282,263,eval_pred_400_text-embedding-3-small_meta-llama-3-70b-instruc.json
