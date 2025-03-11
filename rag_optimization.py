@@ -6,10 +6,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # import chromadb
 import pandas as pd
+import replicate
 import tqdm
 from dotenv import load_dotenv
 from langchain.docstore.document import Document as LangchainDocument
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.llms import Replicate
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
 from mistralai import Mistral
@@ -135,7 +137,7 @@ class CustomRAG:
         self.vector_database = self.config["vector_database"]
         self.vector_database_name = f"{self.chunk_size}_{self.embeddings_model_name}"
 
-        self.filename = f"{self.chunk_size}_{self.embeddings_model_name}_{self.llm}"
+        self.filename = f"{self.chunk_size}_{self.embeddings_model_name}_{self.llm.split("/")[-1]}"
 
     def create_required_folders(self) -> None:
         """
@@ -175,7 +177,7 @@ class CustomRAG:
         """
         Initialize the LLM client based on the client specified in the configuration.
         """
-        supported_clients = ["OpenAI", "Mistral"]
+        supported_clients = ["OpenAI", "Mistral", "Replicate"]
 
         if self.llm_client not in supported_clients:
             print("Warning: {self.llm_client} is not supported yet")
@@ -193,6 +195,12 @@ class CustomRAG:
             self.llm_initialized_client = Mistral(
                 api_key=os.environ.get("MISTRAL_API_KEY")
             )
+       # elif self.llm_client == "Replicate":
+           # self.llm_initialized_client = Replicate(
+            #    model=self.llm,
+                #model_kwargs={"temperature": 0.75, "max_length": 500, "top_p": 1},
+           # )
+
 
     def split_documents(
         self, knowledge_base: List[LangchainDocument]
@@ -349,6 +357,9 @@ class CustomRAG:
                     {"role": "user", "content": query},
                 ],
             )
+
+            answer = response.choices[0].message.content
+
         elif self.llm_client == "Mistral":
             response = self.llm_initialized_client.chat.complete(
                 model=self.llm,
@@ -358,7 +369,18 @@ class CustomRAG:
                 ],
             )
 
-        answer = response.choices[0].message.content
+            answer = response.choices[0].message.content
+
+        elif self.llm_client == "Replicate":
+            response = replicate.run(
+                self.llm,
+                input={
+                    "prompt": query,
+                    "system_prompt": prompt,
+                    "max_tokens": 512,
+                    "prompt_template": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system_prompt}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n".format(system_prompt=prompt, prompt="{prompt}"),})
+
+            answer = "".join(s for s in response if s not in ['\n', '\t', '\r', '""'])
 
         return answer, context
 
