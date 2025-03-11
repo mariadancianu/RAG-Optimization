@@ -4,7 +4,7 @@ import pprint
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
-import chromadb
+#import chromadb
 import pandas as pd
 import replicate
 import tqdm
