@@ -12,7 +12,7 @@ To overcome CPU limitations and the lack of GPUs, I  explored using [Replicate](
 
 To provide an interactive experience with my optimized RAG models, I have developed a **Streamlit application** that allows users to engage directly with the RAG-based chatbot.
 
-The Streamlit app has been deployed to allow easy access for users to interact with the RAG-based system. The application has been hosted on Streamlit’s cloud platform, which simplifies the deployment process and provides a smooth user experience. You can access the deployed app [here](https://rag-optimization-ohtsg2ab2bdgogytojogyb.streamlit.app/).
+The Streamlit app has been deployed to allow easy access for users to interact with the RAG-based system. The application has been hosted on Streamlit’s cloud platform, which simplifies the deployment process and provides a smooth user experience. You can access the deployed app [here](https://rag-optimization-3ycsfdmev3spdadkighatm.streamlit.app/).
 
 As this project is still in progress, there may be occasional performance inconsistencies. However, I'm actively working on fine-tuning the system for a more optimized and seamless user experience.
 
