@@ -1,6 +1,6 @@
 # RAG Optimization Experiments on the SQuAD Dataset
 
-![RAG Optimization](rag.png)
+![RAG Optimization](images/rag.png)
 
 ## 📌 Project Overview
 
@@ -14,7 +14,13 @@ To provide an interactive experience with my optimized RAG models, I have develo
 
 The Streamlit app has been deployed to allow easy access for users to interact with the RAG-based system. The application has been hosted on Streamlit’s cloud platform, which simplifies the deployment process and provides a smooth user experience. You can access the deployed app [here](https://rag-optimization-3ycsfdmev3spdadkighatm.streamlit.app/).
 
+Below is a preview of how the application looks:
+
+![RAG Optimization](images/app.png)
+
+
 As this project is still in progress, there may be occasional performance inconsistencies. However, I'm actively working on fine-tuning the system for a more optimized and seamless user experience.
+
 
 ## 🎯 Objectives
 
