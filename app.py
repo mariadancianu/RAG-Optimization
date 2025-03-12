@@ -2,14 +2,9 @@
 Source: official streamlit documentation: https://docs.streamlit.io/develop/tutorials/chat-and-llm-apps/build-conversational-apps
 """
 
-import subprocess
+import sqlite3
 
-try:
-    import chromadb
-except ImportError:
-    print("Chromadb not found! Attempting to install...")
-    subprocess.run(["pip", "install", "chromadb"])
-    import chromadb
+print(f"SQLite version: {sqlite3.sqlite_version}")
 
 import random
 import time
