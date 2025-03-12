@@ -2,6 +2,11 @@
 Source: official streamlit documentation: https://docs.streamlit.io/develop/tutorials/chat-and-llm-apps/build-conversational-apps
 """
 
+__import__("pysqlite3")
+import sys
+
+sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+
 import sqlite3
 
 print(f"SQLite version: {sqlite3.sqlite_version}")
