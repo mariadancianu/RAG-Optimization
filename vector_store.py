@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
 
 import chromadb
+from fastembed import SparseTextEmbedding
 from langchain.docstore.document import Document as LangchainDocument
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
@@ -11,14 +12,16 @@ from langchain_openai import OpenAIEmbeddings
 from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import (
-    CollectionStatus,
     Distance,
+    Fusion,
+    FusionQuery,
     PointStruct,
+    Prefetch,
+    SparseIndexParams,
+    SparseVector,
+    SparseVectorParams,
     UpdateStatus,
     VectorParams,
-    SparseVectorParams,
-    SparseIndexParams,
-    SparseVector
 )
 from sentence_transformers import SentenceTransformer
 
@@ -50,8 +53,6 @@ class QdrantVectorStore(VectorStore):
             config_dict (Dict[str, Any]): The configuration dictionary.
         """
 
-        # TODO: add support for hybrid search
-        # TODO: save both dense and sparse vectors
         # TODO: add reranking
         # TODO: experiment with filtering methods
 
@@ -71,9 +72,6 @@ class QdrantVectorStore(VectorStore):
             port=6333,
         )
 
-        # TODO: allow different embeddings
-        self.openai_client = OpenAI()
-
         self.chunk_size = config_dict["chunk_size"]
         self.chunk_overlap = config_dict["chunk_overlap"]
 
@@ -83,15 +81,28 @@ class QdrantVectorStore(VectorStore):
         self.vector_database = config_dict["vector_database"]
         self.vector_database_name = f"{self.chunk_size}_{self.embeddings_model_name}"
 
-        # TODO: review these parameters
-        self.vector_size = 1536
+        self.sparse_text_model = config_dict["sparse_text_model"]
+
+        if self.embeddings_platform == "OpenAI":
+            self.embeddings_client = OpenAI()
+
+        test_vector = (
+            self.embeddings_client.embeddings.create(
+                input=["test embeddings"], model=self.embeddings_model_name
+            )
+            .data[0]
+            .embedding
+        )
+
+        self.vector_size = len(test_vector)
         self.vector_distance = Distance.COSINE
+        self.sparse_model = SparseTextEmbedding(model_name=self.sparse_text_model)
 
     def create_vector_store(self):
         """
         Create the vector database based on the configuration.
         """
-        
+
         try:
             collection_info = self.client.get_collection(
                 collection_name=self.vector_database_name
@@ -99,29 +110,34 @@ class QdrantVectorStore(VectorStore):
             print("Collection exists! Skipping creation!")
         except Exception as e:
             print("Collection does not exist, creating collection now")
+
+            """
             self.client.recreate_collection(
                 collection_name=self.vector_database_name,
-                # dense vector index 
+                # dense vector index
                 vectors_config=VectorParams(
-                    size=self.vector_size, 
-                    distance=self.vector_distance
+                    size=self.vector_size, distance=self.vector_distance
                 ),
-            )
+            )"""
 
-            # TODO: add support for hybrid search 
-            '''
+            # TODO: add support for hybrid search
             self.client.recreate_collection(
                 collection_name=self.vector_database_name,
-                # dense vector index 
-                vectors_config={"text-dense": VectorParams(
-                    size=self.vector_size, 
-                    distance=self.vector_distance)},
-
-                #sparse vector index
-                sparse_vectors_config = {
+                # dense vector index
+                vectors_config={
+                    "text-dense": VectorParams(
+                        size=self.vector_size, distance=self.vector_distance
+                    )
+                },
+                # sparse vector index
+                sparse_vectors_config={
                     "text-sparse": SparseVectorParams(
-                        index=SparseIndexParams(on_disk=False,))}
-                )'''
+                        index=SparseIndexParams(
+                            on_disk=False,
+                        )
+                    )
+                },
+            )
 
             collection_info = self.client.get_collection(
                 collection_name=self.vector_database_name
@@ -132,7 +148,7 @@ class QdrantVectorStore(VectorStore):
 
     def upsert_data(self):
         """
-        Saves vectors in the vector database. 
+        Saves vectors in the vector database.
         """
 
         print("Adding data in the database")
@@ -147,26 +163,23 @@ class QdrantVectorStore(VectorStore):
             print("Data inserted successfully!")
         else:
             print("Failed to insert data")
-    
+
     def compute_vectors(self):
         """
         Computes the vectors.
         """
-        
-        points = []
 
+        points = []
         docs = []
         metadata = []
 
-        for doc in self.knowledge_base[
-            0:10
-        ]:  # TODO: remove this limit, testing purposes only
+        for doc in self.knowledge_base:
             docs.append(doc.page_content)
             metadata.append(doc.metadata)
 
         for doc in docs:
             text_vector_dense = (
-                self.openai_client.embeddings.create(
+                self.embeddings_client.embeddings.create(
                     input=[doc], model=self.embeddings_model_name
                 )
                 .data[0]
@@ -174,22 +187,24 @@ class QdrantVectorStore(VectorStore):
             )
             text_id = str(uuid.uuid4())
             context = {"context": doc}
-            point = PointStruct(id=text_id, vector=text_vector_dense, payload=context)
-          
+
+            text_vector_sparse = list(self.sparse_model.embed(doc))
+
+            # point = PointStruct(id=text_id, vector=text_vector_dense, payload=context)
+
             # TODO: add support for dense and sparse vectors
-            '''
-            text_vector_sparse = []
 
             point = PointStruct(
                 id=text_id,
                 vector={
                     "text-sparse": SparseVector(
-                        indices=text_vector_sparse.get("indices").tolist(),
-                        values=text_vector_sparse.get("values").tolist()),
-                    "text-dense": text_vector_dense
-                    },
-                payload=context
-            )'''
+                        indices=text_vector_sparse[0].indices.tolist(),
+                        values=text_vector_sparse[0].values.tolist(),
+                    ),
+                    "text-dense": text_vector_dense,
+                },
+                payload=context,
+            )
 
             points.append(point)
 
@@ -211,8 +226,41 @@ class QdrantVectorStore(VectorStore):
 
         print("Collections after deletion: ", collections)
 
+    def get_query_vector(self, query: str) -> Dict:
+        """
+        Get the sparse and dense vectors for the query.
+
+        Args:
+            query (str): The query string.
+
+        Returns:
+            query_vector_store: dictionary with both dense and sparse
+            vectors for the query.
+        """
+
+        dense_vector = (
+            self.embeddings_client.embeddings.create(
+                input=[query], model=self.embeddings_model_name
+            )
+            .data[0]
+            .embedding
+        )
+
+        sparse_vector = list(self.sparse_model.embed(query))
+        sparse_indices = sparse_vector[0].indices.tolist()
+        sparse_scores = sparse_vector[0].values.tolist()
+
+        query_vector_store = {
+            "sparse_vector": {"indices": sparse_indices, "values": sparse_scores},
+            "dense_vector": dense_vector,
+        }
+
+        return query_vector_store
+
     def query_vector_store(
-        self, query: str, n_results: int = 3, score_threshold: float = 0.1
+        self,
+        query: str,
+        n_results: int = 3,
     ) -> str:
         """
         Query the vector store for relevant documents.
@@ -220,32 +268,48 @@ class QdrantVectorStore(VectorStore):
         Args:
             query (str): The query string.
             n_results (int): The number of results to return.
-            score_threshold (float): The score threshold for filtering results.
 
         Returns:
             context: retrieved context.
         """
 
-        input_vector = (
-            self.openai_client.embeddings.create(
-                input=[query], model=self.embeddings_model_name
-            )
-            .data[0]
-            .embedding
+        query_vector = self.get_query_vector(query)
+
+        # search_result = self.client.search(
+        #    collection_name=self.vector_database_name,
+        #   query_vector=input_vector,
+        #  limit=n_results,
+        # )
+
+        prefetch_n_sparse = n_results * 5
+        prefetch_n_dense = n_results * 5
+        filters = None
+
+        prefetch = [
+            Prefetch(
+                query=SparseVector(**query_vector.get("sparse_vector")),
+                using="text-sparse",
+                limit=prefetch_n_sparse,
+                filter=filters,
+            ),
+            Prefetch(
+                query=query_vector.get("dense_vector"),
+                using="text-dense",
+                limit=prefetch_n_dense,
+                filter=filters,
+            ),
+        ]
+
+        # TODO: deep-dive into this part
+        search_result = self.client.query_points(
+            collection_name=self.vector_database_name,
+            prefetch=prefetch,
+            with_payload=True,
+            limit=n_results,
+            query=FusionQuery(fusion=Fusion.RRF),
         )
 
-        search_result = self.client.search(
-            collection_name=self.vector_database_name,
-            query_vector=input_vector,
-            limit=n_results,
-        )
-     
-        # to access the context: 
-        # context_res = item.payload["context"]
-        # to access smilary score:
-        # similarity_score = item.score
-        
-        context = "\n\n".join(item.payload["context"] for item in search_result)
+        context = "\n\n".join(item.payload["context"] for item in search_result.points)
 
         return context
 

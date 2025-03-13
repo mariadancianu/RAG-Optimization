@@ -41,6 +41,9 @@ The experiments in this repository explore:
 - HuggingFace
 - OpenAI
 - Streamlit
+- Chromadb
+- Qdrant
+- Fastembed
 - Replicate
 
 
