@@ -1,6 +1,6 @@
 import os
 import uuid
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
 
 import chromadb
@@ -16,11 +16,14 @@ from qdrant_client.http.models import (
     PointStruct,
     UpdateStatus,
     VectorParams,
+    SparseVectorParams,
+    SparseIndexParams,
+    SparseVector
 )
 from sentence_transformers import SentenceTransformer
 
 
-class VectorStore:
+class VectorStore(ABC):
     @abstractmethod
     def set_config_options(self):
         pass
@@ -85,6 +88,10 @@ class QdrantVectorStore(VectorStore):
         self.vector_distance = Distance.COSINE
 
     def create_vector_store(self):
+        """
+        Create the vector database based on the configuration.
+        """
+        
         try:
             collection_info = self.client.get_collection(
                 collection_name=self.vector_database_name
@@ -94,11 +101,28 @@ class QdrantVectorStore(VectorStore):
             print("Collection does not exist, creating collection now")
             self.client.recreate_collection(
                 collection_name=self.vector_database_name,
+                # dense vector index 
                 vectors_config=VectorParams(
-                    size=self.vector_size, distance=self.vector_distance
+                    size=self.vector_size, 
+                    distance=self.vector_distance
                 ),
-                # sparse_vectors_config={"text": models.SparseVectorParams()} # TODO
             )
+
+            # TODO: add support for hybrid search 
+            '''
+            self.client.recreate_collection(
+                collection_name=self.vector_database_name,
+                # dense vector index 
+                vectors_config={"text-dense": VectorParams(
+                    size=self.vector_size, 
+                    distance=self.vector_distance)},
+
+                #sparse vector index
+                sparse_vectors_config = {
+                    "text-sparse": SparseVectorParams(
+                        index=SparseIndexParams(on_disk=False,))}
+                )'''
+
             collection_info = self.client.get_collection(
                 collection_name=self.vector_database_name
             )
@@ -107,8 +131,28 @@ class QdrantVectorStore(VectorStore):
         print(collection_info)
 
     def upsert_data(self):
+        """
+        Saves vectors in the vector database. 
+        """
+
         print("Adding data in the database")
 
+        points = self.compute_vectors()
+
+        operation_info = self.client.upsert(
+            collection_name=self.vector_database_name, wait=True, points=points
+        )
+
+        if operation_info.status == UpdateStatus.COMPLETED:
+            print("Data inserted successfully!")
+        else:
+            print("Failed to insert data")
+    
+    def compute_vectors(self):
+        """
+        Computes the vectors.
+        """
+        
         points = []
 
         docs = []
@@ -121,7 +165,7 @@ class QdrantVectorStore(VectorStore):
             metadata.append(doc.metadata)
 
         for doc in docs:
-            text_vector = (
+            text_vector_dense = (
                 self.openai_client.embeddings.create(
                     input=[doc], model=self.embeddings_model_name
                 )
@@ -130,19 +174,31 @@ class QdrantVectorStore(VectorStore):
             )
             text_id = str(uuid.uuid4())
             context = {"context": doc}
-            point = PointStruct(id=text_id, vector=text_vector, payload=context)
+            point = PointStruct(id=text_id, vector=text_vector_dense, payload=context)
+          
+            # TODO: add support for dense and sparse vectors
+            '''
+            text_vector_sparse = []
+
+            point = PointStruct(
+                id=text_id,
+                vector={
+                    "text-sparse": SparseVector(
+                        indices=text_vector_sparse.get("indices").tolist(),
+                        values=text_vector_sparse.get("values").tolist()),
+                    "text-dense": text_vector_dense
+                    },
+                payload=context
+            )'''
+
             points.append(point)
 
-        operation_info = self.client.upsert(
-            collection_name=self.vector_database_name, wait=True, points=points
-        )
-
-        if operation_info.status == UpdateStatus.COMPLETED:
-            print("Data inserted successfully!")
-        else:
-            print("Failed to insert data")
+        return points
 
     def delete_vector_store(self):
+        """
+        Deletes the collection.
+        """
         print("Deleting the collection")
 
         collections = self.client.get_collections()
@@ -183,10 +239,15 @@ class QdrantVectorStore(VectorStore):
             query_vector=input_vector,
             limit=n_results,
         )
+     
+        # to access the context: 
+        # context_res = item.payload["context"]
+        # to access smilary score:
+        # similarity_score = item.score
+        
+        context = "\n\n".join(item.payload["context"] for item in search_result)
 
-        # context = ""
-
-        return search_result
+        return context
 
 
 class ChromaVectorStore(VectorStore):
