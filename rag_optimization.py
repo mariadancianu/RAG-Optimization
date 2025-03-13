@@ -83,6 +83,7 @@ class VectorStore:
         Args:
             knowledge_base (List[LangchainDocument]): The knowledge base documents.
             config_dict (Dict[str, Any]): The configuration dictionary.
+            vector_db_folder (Optional[str]): Folder to save vector database.
         """
 
         if vector_db_folder is None:
@@ -99,7 +100,7 @@ class VectorStore:
         Set the configuration options for the Vector Store instance.
 
         Args:
-            config (Dict[str, Any]): The configuration dictionary.
+            config_dict (Dict[str, Any]): The configuration dictionary.
         """
 
         self.chunk_size = config_dict["chunk_size"]
