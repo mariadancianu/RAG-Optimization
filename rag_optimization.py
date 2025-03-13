@@ -1,6 +1,7 @@
 import json
 import os
 import pprint
+from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -74,6 +75,48 @@ class JSONDefaultConfigFile:
 
 
 class VectorStore:
+
+    @abstractmethod
+    def set_config_options(self):
+        pass
+
+    @abstractmethod
+    def create_vector_store(self):
+        pass
+
+    @abstractmethod
+    def query_vector_store(self):
+        pass
+
+
+class QdrantVectorStore(VectorStore):
+    def __init__(self):
+        pass
+
+    def create_vector_store(self):
+        pass
+
+    def query_vector_store(
+        self, query: str, n_results: int = 3, score_threshold: float = 0.1
+    ) -> str:
+        """
+        Query the vector store for relevant documents.
+
+        Args:
+            query (str): The query string.
+            n_results (int): The number of results to return.
+            score_threshold (float): The score threshold for filtering results.
+
+        Returns:
+            context: retrieved context.
+        """
+
+        context = ""
+
+        return context
+
+
+class ChromaVectorStore(VectorStore):
     def __init__(self,
                  knowledge_base: List[LangchainDocument],
                  config_dict: Dict[str, Any],
@@ -224,22 +267,11 @@ class VectorStore:
             embeddings=document_embeddings
         )
 
-    def create_qdrant_vector_store(self) -> None:
-        """
-        Create a Qdrant vector store for the processed documents.
-        """
-        # TODO: add support for qdrant
-
-        pass
-
     def create_vector_database(self):
         """
         Create the vector database based on the configuration.
         """
-        supported_vector_databases = [
-            "chromadb",
-            "qdrant"
-        ]
+        supported_vector_databases = ["chromadb"]
 
         if self.vector_database not in supported_vector_databases:
             print("Warning: {self.vector_database} is not supported yet")
@@ -252,10 +284,6 @@ class VectorStore:
                 self.create_chroma_vector_store_new()
             else:
                 self.create_chroma_vector_store()
-
-        elif self.vector_database == "qdrant":
-            self.create_qdrant_vector_store()
-
 
     def query_chroma_vector_store_new(
         self, query: str, n_results: int = 3, score_threshold: float = 0.1
@@ -328,30 +356,9 @@ class VectorStore:
 
         return relevant_docs
 
-    def query_qdrant_vector_store(
-        self, query: str, n_results: int = 3, score_threshold: float = 0.1
-    ) -> List[LangchainDocument]:
-        """
-        Query the Chroma vector store for relevant documents.
-
-        Args:
-            query (str): The query string.
-            n_results (int): The number of results to return.
-            score_threshold (float): The score threshold for filtering results.
-
-        Returns:
-            List[LangchainDocument]: The relevant documents.
-        """
-
-        # TODO: add support for qdrant
-
-        relevant_documents = []
-
-        return relevant_documents
-
     def query_vector_store(
         self, query: str, n_results: int = 3, score_threshold: float = 0.1
-    ) -> List[LangchainDocument]:
+    ) -> str:
         """
         Query the vector store for relevant documents.
 
@@ -361,25 +368,27 @@ class VectorStore:
             score_threshold (float): The score threshold for filtering results.
 
         Returns:
-            List[LangchainDocument]: The relevant documents.
+            context: retrieved context.
         """
-        relevant_docs = []
+
+        context = ""
 
         if self.vector_database == "chromadb":
             if self.embeddings_platform == "SentenceTransformers":
                 relevant_docs = self.query_chroma_vector_store_new(
                     query, n_results, score_threshold
                 )
+                relevant_docs = relevant_docs["documents"][0]
+                context = "\n\n".join(doc for doc in relevant_docs)
             else:
                 relevant_docs = self.query_chroma_vector_store(
                     query, n_results, score_threshold
                 )
-        elif self.vector_database == "qdrant":
-            relevant_docs = self.query_qdrant_vector_store(
-                query, n_results, score_threshold
-            )
+                context = "\n\n".join(
+                    [f"Source {i+1}: {doc.page_content}" for i, doc in enumerate(relevant_docs)]
+                )
 
-        return relevant_docs
+        return context
 
 
 class CustomRAG:
@@ -425,7 +434,7 @@ class CustomRAG:
         self.create_required_folders()
         self.initialize_llm_client()
 
-        self.vector_store = VectorStore(
+        self.vector_store = ChromaVectorStore(
             knowledge_base=knowledge_base,
             config_dict=config_dict,
             vector_db_folder=vector_db_folder,
@@ -494,19 +503,7 @@ class CustomRAG:
             Tuple[str, str]: The answer and the context.
         """
 
-        relevant_docs = self.vector_store.query_vector_store(query)
-
-        if self.vector_database == "chromadb":
-            if self.embeddings_platform == "SentenceTransformers":
-                relevant_docs = relevant_docs["documents"][0]
-                context = "\n\n".join(doc for doc in relevant_docs)
-            else:
-                context = "\n\n".join(
-                        [f"Source {i+1}: {doc.page_content}" for i, doc in enumerate(relevant_docs)]
-                    )
-        elif self.vector_database == "qdrant":
-            # TODO: add support for qdrant
-            context = []
+        context = self.vector_store.query_vector_store(query)
 
        # print(f"** Context: {context}")
 
