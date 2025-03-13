@@ -73,78 +73,48 @@ class JSONDefaultConfigFile:
         return configurations
 
 
-class CustomRAG:
-    def __init__(
-        self,
-        knowledge_base: List[LangchainDocument],
-        prompt_message: str,
-        config: Optional[Dict[str, Any]] = None,
-        results_folder: Optional[str] = None,
-        vector_db_folder: Optional[str] = None,
-        save_results=True,
-    ):
-        """
-        Initialize the CustomRAG class with the given parameters.
+class VectorStore:
+    def __init__(self,
+                 knowledge_base: List[LangchainDocument],
+                 config_dict: Dict[str, Any],
+                 vector_db_folder: Optional[str] = None):
+        """Initialize the VectorStore class with the given parameters.
 
         Args:
             knowledge_base (List[LangchainDocument]): The knowledge base documents.
-            prompt_message (str): The prompt message for the LLM.
-            config (Optional[Dict[str, Any]]): Configuration dictionary.
-            results_folder (Optional[str]): Folder to save results.
-            vector_db_folder (Optional[str]): Folder to save vector database.
+            config_dict (Dict[str, Any]): The configuration dictionary.
         """
-        config_file = JSONDefaultConfigFile()
-        self.default_rag_config = config_file.get()
-
-        if config is None:
-            print("Warning: the RAG configurations are missing! Using the default ones")
-            config = self.default_rag_config
-
-        if results_folder is None:
-            results_folder = os.path.join(os.getcwd(), "eval_results")
 
         if vector_db_folder is None:
             vector_db_folder = os.path.join(os.getcwd(), "vector_databases")
 
-        self.config = config
-        self.results_folder = results_folder
         self.vector_db_folder = vector_db_folder
         self.knowledge_base = knowledge_base
-        self.prompt_message = prompt_message
-        self.save_results = save_results
-
-        pprint.pprint(f"CustomRAG config: {config}")
-
-        self.set_config_options()
+        self.set_config_options(config_dict)
         self.create_required_folders()
-        self.initialize_llm_client()
         self.initialize_embeddings_function()
-        self.create_vector_database()
 
-    def set_config_options(self) -> None:
+    def set_config_options(self, config_dict: Dict[str, Any]) -> None:
         """
-        Set the configuration options for the CustomRAG instance.
+        Set the configuration options for the Vector Store instance.
+
+        Args:
+            config (Dict[str, Any]): The configuration dictionary.
         """
-        self.chunk_size = self.config["chunk_size"]
-        self.chunk_overlap = self.config["chunk_overlap"]
 
-        self.embeddings_model_name = self.config["embeddings_function"]["model_name"]
-        self.embeddings_platform = self.config["embeddings_function"]["platform"]
+        self.chunk_size = config_dict["chunk_size"]
+        self.chunk_overlap = config_dict["chunk_overlap"]
 
-        self.llm = self.config["llm"]["model_name"]
-        self.llm_client = self.config["llm"]["client"]
+        self.embeddings_model_name = config_dict["embeddings_function"]["model_name"]
+        self.embeddings_platform = config_dict["embeddings_function"]["platform"]
 
-        self.vector_database = self.config["vector_database"]
+        self.vector_database = config_dict["vector_database"]
         self.vector_database_name = f"{self.chunk_size}_{self.embeddings_model_name}"
-
-        self.filename = f"{self.chunk_size}_{self.embeddings_model_name}_{self.llm.split("/")[-1]}"
 
     def create_required_folders(self) -> None:
         """
         Create the required folders for results and vector database if they do not exist.
         """
-        if not os.path.exists(self.results_folder):
-            os.mkdir(self.results_folder)
         if not os.path.exists(self.vector_db_folder):
             os.mkdir(self.vector_db_folder)
 
@@ -172,35 +142,6 @@ class CustomRAG:
             self.embeddings_function = SentenceTransformer(
                 self.embeddings_model_name, cache_folder=cache_dir
             )
-
-    def initialize_llm_client(self) -> None:
-        """
-        Initialize the LLM client based on the client specified in the configuration.
-        """
-        supported_clients = ["OpenAI", "Mistral", "Replicate"]
-
-        if self.llm_client not in supported_clients:
-            print("Warning: {self.llm_client} is not supported yet")
-            print("Switching to default client")
-
-            self.llm_client = "OpenAI"
-
-        self.llm_initialized_client = None
-
-        if self.llm_client == "OpenAI":
-            self.llm_initialized_client = OpenAI(
-                api_key=os.environ.get("OPENAI_API_KEY")
-            )
-        elif self.llm_client == "Mistral":
-            self.llm_initialized_client = Mistral(
-                api_key=os.environ.get("MISTRAL_API_KEY")
-            )
-       # elif self.llm_client == "Replicate":
-           # self.llm_initialized_client = Replicate(
-            #    model=self.llm,
-                #model_kwargs={"temperature": 0.75, "max_length": 500, "top_p": 1},
-           # )
-
 
     def split_documents(
         self, knowledge_base: List[LangchainDocument]
@@ -282,7 +223,40 @@ class CustomRAG:
             embeddings=document_embeddings
         )
 
-    def query_vector_store_new(
+    def create_qdrant_vector_store(self) -> None:
+        """
+        Create a Qdrant vector store for the processed documents.
+        """
+        # TODO: add support for qdrant
+
+        pass
+
+    def create_vector_database(self):
+        """
+        Create the vector database based on the configuration.
+        """
+        supported_vector_databases = [
+            "chromadb",
+            "qdrant"
+        ]
+
+        if self.vector_database not in supported_vector_databases:
+            print("Warning: {self.vector_database} is not supported yet")
+            print("Switching to default vector database")
+
+            self.vector_database = "chromadb"
+
+        if self.vector_database == "chromadb":
+            if self.embeddings_platform == "SentenceTransformers":
+                self.create_chroma_vector_store_new()
+            else:
+                self.create_chroma_vector_store()
+
+        elif self.vector_database == "qdrant":
+            self.create_qdrant_vector_store()
+
+
+    def query_chroma_vector_store_new(
         self, query: str, n_results: int = 3, score_threshold: float = 0.1
     ) -> List[LangchainDocument]:
         """
@@ -315,24 +289,6 @@ class CustomRAG:
 
         return relevant_docs
 
-    def create_vector_database(self) -> None:
-        """
-        Create the vector database based on the configuration.
-        """
-        supported_vector_databases = ["chromadb"]
-
-        if self.vector_database not in supported_vector_databases:
-            print("Warning: {self.vector_database} is not supported yet")
-            print("Switching to default vector database")
-
-            self.vector_database = "chromadb"
-
-        if self.vector_database == "chromadb":
-            if self.embeddings_platform == "SentenceTransformers":
-                self.create_chroma_vector_store_new()
-            else:
-                self.create_chroma_vector_store()
-
     def query_chroma_vector_store(
         self, query: str, n_results: int = 3, score_threshold: float = 0.1
     ) -> List[LangchainDocument]:
@@ -347,8 +303,8 @@ class CustomRAG:
         Returns:
             List[LangchainDocument]: The relevant documents.
         """
-        # print("Querying chroma vector store")
-        # print(query)
+        #print("Querying chroma vector store")
+        #print(query)
 
         persistent_directory = os.path.join(
             self.vector_db_folder, self.vector_database_name
@@ -371,6 +327,27 @@ class CustomRAG:
 
         return relevant_docs
 
+    def query_qdrant_vector_store(
+        self, query: str, n_results: int = 3, score_threshold: float = 0.1
+    ) -> List[LangchainDocument]:
+        """
+        Query the Chroma vector store for relevant documents.
+
+        Args:
+            query (str): The query string.
+            n_results (int): The number of results to return.
+            score_threshold (float): The score threshold for filtering results.
+
+        Returns:
+            List[LangchainDocument]: The relevant documents.
+        """
+
+        # TODO: add support for qdrant
+
+        relevant_documents = []
+
+        return relevant_documents
+
     def query_vector_store(
         self, query: str, n_results: int = 3, score_threshold: float = 0.1
     ) -> List[LangchainDocument]:
@@ -388,11 +365,122 @@ class CustomRAG:
         relevant_docs = []
 
         if self.vector_database == "chromadb":
-            relevant_docs = self.query_chroma_vector_store(
+            if self.embeddings_platform == "SentenceTransformers":
+                relevant_docs = self.query_chroma_vector_store_new(
+                    query, n_results, score_threshold
+                )
+            else:
+                relevant_docs = self.query_chroma_vector_store(
+                    query, n_results, score_threshold
+                )
+        elif self.vector_database == "qdrant":
+            relevant_docs = self.query_qdrant_vector_store(
                 query, n_results, score_threshold
             )
 
         return relevant_docs
+
+
+class CustomRAG:
+    def __init__(
+        self,
+        knowledge_base: List[LangchainDocument],
+        prompt_message: str,
+        config_dict: Optional[Dict[str, Any]] = None,
+        results_folder: Optional[str] = None,
+        vector_db_folder: Optional[str] = None,
+        save_results=True,
+    ):
+        """
+        Initialize the CustomRAG class with the given parameters.
+
+        Args:
+            knowledge_base (List[LangchainDocument]): The knowledge base documents.
+            prompt_message (str): The prompt message for the LLM.
+            config_dict (Optional[Dict[str, Any]]): Configuration dictionary.
+            results_folder (Optional[str]): Folder to save results.
+            vector_db_folder (Optional[str]): Folder to save vector database.
+        """
+
+        # TODO: split between llm config and vector store config
+
+        config_file = JSONDefaultConfigFile()
+        self.default_rag_config = config_file.get()
+
+        if config_dict is None:
+            print("Warning: the RAG configurations are missing! Using the default ones")
+            config_dict = self.default_rag_config
+
+        if results_folder is None:
+            results_folder = os.path.join(os.getcwd(), "eval_results")
+
+        self.results_folder = results_folder
+        self.prompt_message = prompt_message
+        self.save_results = save_results
+
+        pprint.pprint(f"CustomRAG config: {config_dict}")
+
+        self.set_config_options(config_dict)
+        self.create_required_folders()
+        self.initialize_llm_client()
+
+        self.vector_store = VectorStore(
+            knowledge_base=knowledge_base,
+            config_dict=config_dict,
+            vector_db_folder=vector_db_folder,
+        )
+
+        self.vector_store.create_vector_database()
+
+    def set_config_options(self, config_dict: Dict[str, Any]) -> None:
+        """
+        Set the configuration options for the CustomRAG instance.
+
+        Args:
+            config_dict (Dict[str, Any]): The configuration dictionary.
+        """
+
+        self.llm = config_dict["llm"]["model_name"]
+        self.llm_client = config_dict["llm"]["client"]
+
+        chunk_size = config_dict["chunk_size"]
+        embeddings_model_name = config_dict["embeddings_function"]["model_name"]
+        self.filename = f"{chunk_size}_{embeddings_model_name}_{self.llm.split("/")[-1]}"
+
+    def create_required_folders(self) -> None:
+        """
+        Create the required folders for results and vector database if they do not exist.
+        """
+        if not os.path.exists(self.results_folder):
+            os.mkdir(self.results_folder)
+
+    def initialize_llm_client(self) -> None:
+        """
+        Initialize the LLM client based on the client specified in the configuration.
+        """
+        supported_clients = ["OpenAI", "Mistral", "Replicate"]
+
+        if self.llm_client not in supported_clients:
+            print("Warning: {self.llm_client} is not supported yet")
+            print("Switching to default client")
+
+            self.llm_client = "OpenAI"
+
+        self.llm_initialized_client = None
+
+        if self.llm_client == "OpenAI":
+            self.llm_initialized_client = OpenAI(
+                api_key=os.environ.get("OPENAI_API_KEY")
+            )
+        elif self.llm_client == "Mistral":
+            self.llm_initialized_client = Mistral(
+                api_key=os.environ.get("MISTRAL_API_KEY")
+            )
+       # elif self.llm_client == "Replicate":
+           # self.llm_initialized_client = Replicate(
+            #    model=self.llm,
+                #model_kwargs={"temperature": 0.75, "max_length": 500, "top_p": 1},
+           # )
 
     def get_llm_single_question_answer(self, query: str) -> Tuple[str, str]:
         """
@@ -405,16 +493,19 @@ class CustomRAG:
             Tuple[str, str]: The answer and the context.
         """
 
-        if self.embeddings_platform == "SentenceTransformers":
-            relevant_docs = self.query_vector_store_new(query)
-            relevant_docs = relevant_docs["documents"][0]
-            context = "\n\n".join(doc for doc in relevant_docs)
-        else:
-            relevant_docs = self.query_vector_store(query)
+        relevant_docs = self.vector_store.query_vector_store(query)
 
-            context = "\n\n".join(
-                    [f"Source {i+1}: {doc.page_content}" for i, doc in enumerate(relevant_docs)]
-                )
+        if self.vector_database == "chromadb":
+            if self.embeddings_platform == "SentenceTransformers":
+                relevant_docs = relevant_docs["documents"][0]
+                context = "\n\n".join(doc for doc in relevant_docs)
+            else:
+                context = "\n\n".join(
+                        [f"Source {i+1}: {doc.page_content}" for i, doc in enumerate(relevant_docs)]
+                    )
+        elif self.vector_database == "qdrant":
+            # TODO: add support for qdrant
+            context = []
 
        # print(f"** Context: {context}")
 
