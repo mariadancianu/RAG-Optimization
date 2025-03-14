@@ -4,6 +4,7 @@
 .idea/
 .ipynb_checkpoints/
 vector_databases/
+qdrant_storage/
 *.pyc
 __pycache__/
 model_cache/

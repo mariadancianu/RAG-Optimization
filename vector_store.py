@@ -55,6 +55,7 @@ class QdrantVectorStore(VectorStore):
 
         # TODO: add reranking
         # TODO: experiment with filtering methods
+        # TODO: add function to update the vector db with additional documents
 
         self.knowledge_base = knowledge_base
         self.set_config_options(config_dict)
