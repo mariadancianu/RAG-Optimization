@@ -145,7 +145,8 @@ class CustomRAG:
 
         chunk_size = config_dict["chunk_size"]
         embeddings_model_name = config_dict["embeddings_function"]["model_name"]
-        self.filename = f"{chunk_size}_{embeddings_model_name}_{self.llm.split("/")[-1]}"
+        vector_database = config_dict["vector_database"]
+        self.filename = f"{chunk_size}_{embeddings_model_name}_{self.llm.split("/")[-1]}_{vector_database}"
 
     def create_required_folders(self) -> None:
         """
@@ -353,7 +354,7 @@ def optimize_rag_parameters(
             for chunk_size in chunk_sizes:
                 print(f"Running {model_name} - {chunk_size} - {embeddings_name}")
 
-                filename = f"{chunk_size}_{embeddings_name}_{model_name}.json"
+                filename = f"{chunk_size}_{embeddings_name}_{model_name}_{vector_database}.json"
                 filepath = os.path.join(results_folder, f"pred_{filename}")
 
                 if os.path.isfile(filepath):
