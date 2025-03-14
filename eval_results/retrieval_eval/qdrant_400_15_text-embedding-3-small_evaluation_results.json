@@ -1,0 +1,7 @@
+{
+    "avg_hit_rate": 0.9621848739495799,
+    "avg_mean_reciprocal_rank": 0.8802521008403361,
+    "avg_precision": 0.4187675070028011,
+    "avg_recall": 0.9621848739495799,
+    "total_queries": 238
+}

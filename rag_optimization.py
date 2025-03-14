@@ -114,6 +114,7 @@ class CustomRAG:
         self.initialize_llm_client()
 
         if config_dict["vector_database"] == "chromadb":
+            print("Using chromadb!")
             self.vector_store = ChromaVectorStore(
                 knowledge_base=knowledge_base,
                 config_dict=config_dict,
@@ -121,6 +122,7 @@ class CustomRAG:
             )
 
         elif config_dict["vector_database"] == "qdrant":
+            print("Using qdrant!")
             self.vector_store = QdrantVectorStore(
                 knowledge_base=knowledge_base,
                 config_dict=config_dict
@@ -343,6 +345,8 @@ def optimize_rag_parameters(
         "embed_options", {"text-embedding-3-small": "OpenAI"}
     )
     models = parameters_dict.get("models", {"gpt-3.5-turbo": "openai"})
+    vector_database = parameters_dict.get("vector_database", "chromadb")
+    sparse_text_model = parameters_dict.get("sparse_text_model")
 
     for embeddings_name, embeddings_platform in embed_options.items():
         for model_name, client in models.items():
@@ -359,7 +363,8 @@ def optimize_rag_parameters(
                 parameters_dict = {
                     "chunk_size": chunk_size,
                     "chunk_overlap": 15,
-                    "vector_database": "chromadb",
+                    "vector_database": vector_database,
+                    "sparse_text_model": sparse_text_model,
                     "embeddings_function": {
                         "model_name": embeddings_name,
                         "platform": embeddings_platform,
@@ -370,7 +375,7 @@ def optimize_rag_parameters(
                 rag = CustomRAG(
                     knowledge_base=knowledge_base_docs,
                     prompt_message=prompt_message,
-                    config=parameters_dict,
+                    config_dict=parameters_dict,
                     results_folder=results_folder,
                     vector_db_folder=vector_db_folder,
                 )

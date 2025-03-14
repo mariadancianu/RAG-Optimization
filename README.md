@@ -8,7 +8,7 @@ This repository contains a series of **Retrieval-Augmented Generation (RAG)** op
 
 The focus is on improving retrieval quality and generation performance using the [SQuAD dataset](https://rajpurkar.github.io/SQuAD-explorer/) (Stanford Question Answering Dataset).
 
-To overcome CPU limitations and the lack of GPUs, I  explored using [Replicate](https://replicate.com) to run the experiments on the cloud, which allowed for efficient execution of large language models. Replicate is user-friendly and simplifies running large language models. While it is a paid service, the cost of running some simple experiments is limited.
+To overcome CPU limitations and the lack of GPUs, I  explored using [Replicate](https://replicate.com) to run the experiments on the cloud, which allowed for efficient execution of large language models. Replicate is user-friendly and simplifies running large language models. While it is a paid service, the cost of running some simple experiments is limited and you can also set up a monthly spend limit.
 
 To provide an interactive experience with my optimized RAG models, I have developed a **Streamlit application** that allows users to engage directly with the RAG-based chatbot.
 
@@ -45,6 +45,7 @@ The experiments in this repository explore:
 - Qdrant
 - Fastembed
 - Replicate
+- Docker
 
 
 ## 🔄 Status

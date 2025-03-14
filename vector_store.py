@@ -32,7 +32,7 @@ class VectorStore(ABC):
         pass
 
     @abstractmethod
-    def create_vector_store(self):
+    def create_vector_store(self) -> None:
         pass
 
     @abstractmethod
@@ -211,7 +211,7 @@ class QdrantVectorStore(VectorStore):
 
         return points
 
-    def delete_vector_store(self):
+    def delete_vector_store(self) -> None:
         """
         Deletes the collection.
         """
@@ -262,6 +262,7 @@ class QdrantVectorStore(VectorStore):
         self,
         query: str,
         n_results: int = 3,
+        join_context: bool = True,
     ) -> str:
         """
         Query the vector store for relevant documents.
@@ -310,7 +311,12 @@ class QdrantVectorStore(VectorStore):
             query=FusionQuery(fusion=Fusion.RRF),
         )
 
-        context = "\n\n".join(item.payload["context"] for item in search_result.points)
+        if join_context:
+            context = "\n\n".join(
+                item.payload["context"] for item in search_result.points
+            )
+        else:
+            context = [item.payload["context"] for item in search_result.points]
 
         return context
 
@@ -443,8 +449,6 @@ class ChromaVectorStore(VectorStore):
         """
         Create a Chroma vector store for the processed documents.
         """
-        # TODO: merge this function with create_chroma_vector_store
-
         docs_processed = self.split_documents(self.knowledge_base)
 
         docs = [doc.page_content for doc in docs_processed]
@@ -466,7 +470,7 @@ class ChromaVectorStore(VectorStore):
         # note: use upsert instead of add to avoid adding existing documents
         collection.upsert(ids=ids, documents=docs, embeddings=document_embeddings)
 
-    def create_vector_store(self):
+    def create_vector_store(self) -> None:
         """
         Create the vector database based on the configuration.
         """
@@ -560,7 +564,11 @@ class ChromaVectorStore(VectorStore):
         return relevant_docs
 
     def query_vector_store(
-        self, query: str, n_results: int = 3, score_threshold: float = 0.1
+        self,
+        query: str,
+        n_results: int = 3,
+        score_threshold: float = 0.1,
+        join_context: bool = True,
     ) -> str:
         """
         Query the vector store for relevant documents.
@@ -582,16 +590,23 @@ class ChromaVectorStore(VectorStore):
                     query, n_results, score_threshold
                 )
                 relevant_docs = relevant_docs["documents"][0]
-                context = "\n\n".join(doc for doc in relevant_docs)
+
+                if join_context:
+                    context = "\n\n".join(doc for doc in relevant_docs)
+                else:
+                    context = relevant_docs.copy()
             else:
                 relevant_docs = self.query_chroma_vector_store(
                     query, n_results, score_threshold
                 )
-                context = "\n\n".join(
-                    [
-                        f"Source {i+1}: {doc.page_content}"
-                        for i, doc in enumerate(relevant_docs)
-                    ]
-                )
+                if join_context:
+                    context = "\n\n".join(
+                        [
+                            f"Source {i+1}: {doc.page_content}"
+                            for i, doc in enumerate(relevant_docs)
+                        ]
+                    )
+                else:
+                    context = [doc.page_content for doc in relevant_docs]
 
         return context
