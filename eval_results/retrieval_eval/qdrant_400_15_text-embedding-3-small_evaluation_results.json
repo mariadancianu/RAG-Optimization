@@ -1,7 +1,7 @@
 {
-    "avg_hit_rate": 0.35294117647058826,
-    "avg_mean_reciprocal_rank": 0.2777777777777778,
-    "avg_precision": 0.13725490196078433,
-    "avg_recall": 0.35294117647058826,
-    "total_queries": 51
+    "avg_hit_rate": 0.9621848739495799,
+    "avg_mean_reciprocal_rank": 0.8830532212885154,
+    "avg_precision": 0.41736694677871145,
+    "avg_recall": 0.9621848739495799,
+    "total_queries": 238
 }

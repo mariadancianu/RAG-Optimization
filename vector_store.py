@@ -17,6 +17,7 @@ from qdrant_client.http.models import (
     FusionQuery,
     PointStruct,
     Prefetch,
+    SearchParams,
     SparseIndexParams,
     SparseVector,
     SparseVectorParams,
@@ -309,6 +310,10 @@ class QdrantVectorStore(VectorStore):
             with_payload=True,
             limit=n_results,
             query=FusionQuery(fusion=Fusion.RRF),
+            # Qdrant has a built-in exact search mode, which can be used
+            # to measure the quality of the search results.
+            # not suitable for production use with high load
+            search_params=SearchParams(exact=True),  # Turns on the exact search mode
         )
 
         if join_context:
