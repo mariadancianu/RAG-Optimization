@@ -25,7 +25,7 @@ class RetrievalEvaluator:
 
         # TODO: add option to evaluate directly with contexts, instead of fetching from the db
 
-        self.df_ground_truth = df_ground_truth
+        self.df_ground_truth = df_ground_truth.copy()
         self.vector_store = vector_store
 
         if path_to_results is None:
@@ -43,6 +43,7 @@ class RetrievalEvaluator:
         Returns:
             Dict[str, float]: A dictionary containing average scores and total queries.
         """
+
         results_dict = {
             "avg_hit_rate": None,
             "avg_mean_reciprocal_rank": None,
@@ -55,7 +56,8 @@ class RetrievalEvaluator:
         recall_scores, precision_scores, mrr_scores = [], [], []
         total_queries = 0
 
-        for _, row in tqdm(
+        # TODO: include also the questions with no answers in the evaluation
+        for idx, row in tqdm(
             self.df_ground_truth[self.df_ground_truth.is_impossible == False].iterrows()
         ):
             total_queries += 1
@@ -78,7 +80,9 @@ class RetrievalEvaluator:
                 1 for i, chunk in enumerate(context) if i in relevant_chunks
             )
 
-            # Compute Recall
+            # TODO: fix recall computation
+            # Compute Recall - ratio of relevant documents retrieved to the total number of relevant documents in the dataset
+            # this computation is not correct
             recall = (
                 retrieved_relevant_chunks / len(relevant_chunks)
                 if relevant_chunks
@@ -86,7 +90,7 @@ class RetrievalEvaluator:
             )
             recall_scores.append(recall)
 
-            # Compute Precision
+            # Compute Precision - relevant documents retrieved over the total documents retrieved
             precision = retrieved_relevant_chunks / top_k
             precision_scores.append(precision)
 
@@ -103,7 +107,20 @@ class RetrievalEvaluator:
                 ),
                 0,
             )
-            mrr_scores.append(1 / rank if rank > 0 else 0)
+
+            mrr_score = 1 / rank if rank > 0 else 0
+            mrr_scores.append(mrr_score)
+
+            self.df_ground_truth.loc[idx, "mrr_score"] = mrr_score
+            self.df_ground_truth.loc[idx, "precision_score"] = precision
+            self.df_ground_truth.loc[idx, "recall_score"] = recall
+            self.df_ground_truth.loc[idx, "relevant_chunks"] = [relevant_chunks]
+            self.df_ground_truth.loc[
+                idx, "retrieved_relevant_chunks"
+            ] = retrieved_relevant_chunks
+            self.df_ground_truth.loc[
+                idx, ["context_0", "context_1", "context_2"]
+            ] = context
 
         avg_recall = sum(recall_scores) / len(recall_scores) if recall_scores else 0
         avg_precision = (
@@ -131,13 +148,20 @@ class RetrievalEvaluator:
         chunk_size = self.vector_store.chunk_size
         chunk_overlap = self.vector_store.chunk_overlap
         embeddings_model_name = self.vector_store.embeddings_model_name
-        results_filename = os.path.join(
+        results_filename_json = os.path.join(
             self.path_to_results,
             f"{database_type}_{chunk_size}_{chunk_overlap}_{embeddings_model_name}_evaluation_results.json",
         )
 
-        with open(results_filename, "w") as f:
+        with open(results_filename_json, "w") as f:
             json.dump(results_dict, f, indent=4)
+
+        results_filename_csv = os.path.join(
+            self.path_to_results,
+            f"{database_type}_{chunk_size}_{chunk_overlap}_{embeddings_model_name}_evaluation_results.csv",
+        )
+
+        self.df_ground_truth.to_csv(results_filename_csv, index=False)
 
     def evaluate(self) -> None:
         """
