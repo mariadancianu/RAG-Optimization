@@ -8,3 +8,4 @@ qdrant_storage/
 *.pyc
 __pycache__/
 model_cache/
+users.db
