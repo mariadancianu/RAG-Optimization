@@ -3,9 +3,9 @@ Source: official streamlit documentation: https://docs.streamlit.io/develop/tuto
 Source login: https://medium.com/@kuldeepkumawat195/building-a-secure-user-authentication-system-with-streamlit-and-sqlite-9cf153288e18
 """
 
-# __import__("pysqlite3")
-# import sys
-# sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+__import__("pysqlite3")
+import sys
+sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 import hashlib
 import random
 import sqlite3
