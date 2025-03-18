@@ -237,6 +237,11 @@ def main():
         logout = st.sidebar.button(label="Log Out")
         if logout:
             st.session_state.logged_in = False  # Set logged_in to False on logout
+
+            # delete the chatbot messages when logging out
+            if "messages" in st.session_state:
+                del st.session_state.messages
+
             st.rerun()  # Rerun the app to refresh the state
         chatbot()  # Show the chatbot interface
     else:
