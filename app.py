@@ -3,10 +3,9 @@ Source: official streamlit documentation: https://docs.streamlit.io/develop/tuto
 Source login: https://medium.com/@kuldeepkumawat195/building-a-secure-user-authentication-system-with-streamlit-and-sqlite-9cf153288e18
 """
 
-__import__("pysqlite3")
-import sys
-
-sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+# __import__("pysqlite3")
+# import sys
+# sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 import hashlib
 import random
 import sqlite3
@@ -51,8 +50,19 @@ Answer (in a conversational tone, with "I'm afraid I can't assist with that. Is 
 
 
 def init_db():
+    """
+    Use a lightweight disk-based database to store user credentials.
+    """
+
+    # Connection (and creation if not existent) to the on-disk database
     conn = sqlite3.connect("users.db")
+
+    # In order to execute SQL statements and fetch results from SQL queries,
+    # we will need to use a database cursor (a pointer)
     cursor = conn.cursor()
+
+    # Creates the users table if it doesn't exist
+    # with columns: username, password, role
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
@@ -62,7 +72,11 @@ def init_db():
         )
     """
     )
+
+    # Commit any pending transaction to the database
     conn.commit()
+
+    # Close the database connection
     conn.close()
 
 
@@ -71,6 +85,10 @@ def hash_password(password):
 
 
 def add_user_to_db(username, hashed_password):
+    """
+    Add a new user to the database.
+    """
+
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
     try:
@@ -85,6 +103,10 @@ def add_user_to_db(username, hashed_password):
 
 
 def signup():
+    """
+    Sign up for a new account if the "Sign Up" button is selected.
+    """
+
     new_username = st.text_input("Create Username")
     new_password = st.text_input("Create Password", type="password")
     confirm_password = st.text_input("Confirm Password", type="password")
@@ -97,9 +119,14 @@ def signup():
             add_user_to_db(new_username, hashed_password)
             st.success("Account created successfully!")
             st.session_state["logged_in"] = True
+            st.rerun()  # Force a rerun to refresh the UI
 
 
 def verify_user(username, password):
+    """
+    Verify the user's credentials against the database.
+    """
+
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
     hashed_password = hash_password(password)
@@ -113,8 +140,15 @@ def verify_user(username, password):
 
 
 def login():
+    """
+    Login to the app if the "Login" button is selected. Verify the user's
+    credentials against the database.
+
+    """
+
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
+
     if st.button("Login"):
         is_valid, role = verify_user(username, password)
         if is_valid:
@@ -122,6 +156,7 @@ def login():
             st.session_state["role"] = role
             st.session_state["username"] = username
             st.session_state["logged_in"] = True
+            st.rerun()  # Force a rerun to refresh the UI
         else:
             st.error("Invalid username or password")
 
@@ -195,21 +230,22 @@ def chatbot():
 # Main function to handle different states
 def main():
     st.sidebar.title("Navigation")
-    choice = st.sidebar.radio("Go to", ["Login", "Sign Up"])
 
-    if choice == "Sign Up":
-        signup()
-    elif choice == "Login":
-        login()
-
-    # TODO
+    # Check if the user is logged in
     if st.session_state.get("logged_in", False):
-        with st.empty():
-            logout = st.sidebar.button(label="Log Out")
-            chatbot()
-
-            # if logout:
-            # TODO
+        # If logged in, show the logout button and the chatbot
+        logout = st.sidebar.button(label="Log Out")
+        if logout:
+            st.session_state.logged_in = False  # Set logged_in to False on logout
+            st.rerun()  # Rerun the app to refresh the state
+        chatbot()  # Show the chatbot interface
+    else:
+        # If not logged in, show the login/signup options
+        choice = st.sidebar.radio("Go to", ["Login", "Sign Up"])
+        if choice == "Sign Up":
+            signup()
+        elif choice == "Login":
+            login()
 
 
 # Initialize database on first run
